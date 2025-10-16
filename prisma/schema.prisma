@@ -1,0 +1,27 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Project {
+  id               String   @id @default(cuid())
+  organizationId   String   @map("organization_id") @default("org-1")
+  code             String   @unique
+  name             String
+  clientName       String?  @map("client_name")
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  budgetHours      Float?   @map("budget_hours")
+  budgetValue      Float?   @map("budget_value")
+  status           String   @default("planned")
+  tags             String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("projects")
+}
