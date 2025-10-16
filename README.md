@@ -14,4 +14,4 @@ Sistema de gestão de alocação de equipes inspirado no Harvest Forecast.
 - Next.js 15
 - TypeScript
 - Tailwind CSS
-- Supabase (PostgreSQL)
+- Supabase (PostgreSQL)" " 
