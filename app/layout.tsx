@@ -36,12 +36,12 @@ export default function RootLayout({
           <div className="container mx-auto px-6 py-3">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-8">
-                <h1 className="text-xl font-bold">PremiumBravo Forecast</h1>
+                <h1 className="text-xl font-bold">PB Forecast</h1>
                 <div className="flex space-x-4">
                   <Link 
                     href="/projects" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/projects' ? 'bg-blue-700' : 'hover:bg-blue-500'
+                      pathname === '/projects' ? 'premiumbravo' : 'hover:bg-blue-500'
                     }`}
                   >
                     Projetos
@@ -49,7 +49,7 @@ export default function RootLayout({
                   <Link 
                     href="/people" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/people' ? 'bg-blue-700' : 'hover:bg-blue-500'
+                      pathname === '/people' ? 'premiumbravo' : 'hover:bg-blue-500'
                     }`}
                   >
                     Equipe
@@ -57,7 +57,7 @@ export default function RootLayout({
                   <Link 
                     href="/timeline" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/timeline' ? 'bg-blue-700' : 'hover:bg-blue-500'
+                      pathname === '/timeline' ? 'premiumbravo' : 'hover:bg-blue-500'
                     }`}
                   >
                     Timeline
