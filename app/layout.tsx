@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import Link from 'next/link' // ← ESTA LINHA ESTAVA FALTANDO!
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import './globals.css'
 
@@ -36,12 +36,14 @@ export default function RootLayout({
           <div className="container mx-auto px-6 py-3">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-8">
-                <h1 className="text-xl font-bold">PB Forecast</h1>
+                <Link href="/" className="text-xl font-bold hover:opacity-80 transition-opacity">
+                  PB Forecast
+                </Link>
                 <div className="flex space-x-4">
                   <Link 
                     href="/projects" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/projects' ? 'premiumbravo' : 'hover:bg-blue-500'
+                      pathname === '/projects' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
                     }`}
                   >
                     Projetos
@@ -49,7 +51,7 @@ export default function RootLayout({
                   <Link 
                     href="/people" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/people' ? 'premiumbravo' : 'hover:bg-blue-500'
+                      pathname === '/people' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
                     }`}
                   >
                     Equipe
@@ -57,10 +59,18 @@ export default function RootLayout({
                   <Link 
                     href="/timeline" 
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === '/timeline' ? 'premiumbravo' : 'hover:bg-blue-500'
+                      pathname === '/timeline' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
                     }`}
                   >
                     Timeline
+                  </Link>
+                  <Link 
+                    href="/reports" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      pathname === '/reports' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
+                    }`}
+                  >
+                    Relatórios
                   </Link>
                 </div>
               </div>
