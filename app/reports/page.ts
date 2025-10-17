@@ -8,6 +8,7 @@ interface Project {
   id: string
   code: string
   name: string
+  client_name?: string
   budget_hours?: number
   budget_value?: number
   status: string
