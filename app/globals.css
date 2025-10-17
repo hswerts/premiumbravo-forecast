@@ -1,19 +1,19 @@
+/* app/globals.css */
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Defina a paleta Premiumbravo via @theme (Tailwind 4) */
+@theme {
+  --color-premiumbravo: #004F5A;
+  --color-premiumbravo-light: #04606E;
+  --color-premiumbravo-dark: #003E47;
+}
+
+/* (opcional) utilitários globais */
+:root { color-scheme: light; }
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
