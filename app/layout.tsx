@@ -32,7 +32,7 @@ export default function RootLayout({
         <meta name="description" content="Sistema de gestão de alocação de equipes" />
       </head>
       <body className="antialiased">
-        <nav className="bg-blue-600 text-white shadow-lg">
+        <nav className="bg-premiumbravo text-white shadow-lg">
           <div className="container mx-auto px-6 py-3">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-8">
