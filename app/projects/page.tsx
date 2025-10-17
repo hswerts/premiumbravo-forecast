@@ -227,11 +227,11 @@ export default function ProjectsPage() {
           <tbody className="divide-y divide-gray-200">
             {projects.map((project) => (
               <tr key={project.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-mono text-sm text-gray-900">{project.code}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{project.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{project.client_name || '-'}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{project.budget_hours ? `${project.budget_hours}h` : '-'}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+                <td className="px-6 py-2 font-mono text-sm text-gray-900">{project.code}</td>
+                <td className="px-6 py-2 text-sm font-medium text-gray-900">{project.name}</td>
+                <td className="px-6 py-2 text-sm text-gray-500">{project.client_name || '-'}</td>
+                <td className="px-6 py-2 text-sm text-gray-500">{project.budget_hours ? `${project.budget_hours}h` : '-'}</td>
+                <td className="px-6 py-2 text-sm text-gray-500">
                   {project.budget_value 
                     ? `R$ ${project.budget_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                     : '-'
