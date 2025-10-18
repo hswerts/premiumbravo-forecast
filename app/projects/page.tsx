@@ -26,6 +26,8 @@ type SortKey =
 
 type SortDirection = 'asc' | 'desc'
 
+const STORAGE_KEY = 'projectsSort-v1'
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -43,7 +45,35 @@ export default function ProjectsPage() {
     budgetValue: ''
   })
 
-  // Carregar projetos do Supabase
+  // --- carregar ordenação salva ---
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved) as { key?: string; dir?: SortDirection }
+
+      const validKeys: SortKey[] = [
+        'code', 'name', 'client_name', 'budget_hours', 'budget_value', 'status', 'created_at'
+      ]
+      if (parsed.key && (validKeys as string[]).includes(parsed.key)) {
+        setSortKey(parsed.key as SortKey)
+      }
+      if (parsed.dir === 'asc' || parsed.dir === 'desc') {
+        setSortDir(parsed.dir)
+      }
+    } catch {
+      /* ignora erros */
+    }
+  }, [])
+
+  // --- salvar ordenação ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ key: sortKey, dir: sortDir }))
+  }, [sortKey, sortDir])
+
+  // --- carregar projetos ---
   useEffect(() => {
     loadProjects()
   }, [])
@@ -108,26 +138,19 @@ export default function ProjectsPage() {
     })
   }
 
-  // --------- Ordenação em memória ----------
+  // --- ordenação em memória ---
   const sortedProjects = useMemo(() => {
     const copy = [...projects]
 
     const getVal = (p: Project, key: SortKey) => {
       switch (key) {
-        case 'code':
-          return Number(p.code) || 0
-        case 'name':
-          return p.name || ''
-        case 'client_name':
-          return p.client_name || ''
-        case 'budget_hours':
-          return typeof p.budget_hours === 'number' ? p.budget_hours : -Infinity
-        case 'budget_value':
-          return typeof p.budget_value === 'number' ? p.budget_value : -Infinity
-        case 'status':
-          return p.status || ''
-        case 'created_at':
-          return p.created_at ? new Date(p.created_at).getTime() : -Infinity
+        case 'code': return Number(p.code) || 0
+        case 'name': return p.name || ''
+        case 'client_name': return p.client_name || ''
+        case 'budget_hours': return typeof p.budget_hours === 'number' ? p.budget_hours : -Infinity
+        case 'budget_value': return typeof p.budget_value === 'number' ? p.budget_value : -Infinity
+        case 'status': return p.status || ''
+        case 'created_at': return p.created_at ? new Date(p.created_at).getTime() : -Infinity
       }
     }
 
@@ -136,11 +159,8 @@ export default function ProjectsPage() {
       const vb = getVal(b, sortKey)
 
       let cmp = 0
-      if (typeof va === 'number' && typeof vb === 'number') {
-        cmp = va - vb
-      } else {
-        cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
-      }
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb
+      else cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
 
       return sortDir === 'asc' ? cmp : -cmp
     })
@@ -149,22 +169,16 @@ export default function ProjectsPage() {
   }, [projects, sortKey, sortDir])
 
   const toggleSort = (key: SortKey) => {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir('asc')
-    }
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('asc') }
   }
 
   const headerBtn =
     'flex items-center gap-1 select-none cursor-pointer text-left text-xs font-medium uppercase'
-
   const arrow = (key: SortKey) =>
     sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
 
-  // -----------------------------------------
-
+  // --- UI ---
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
@@ -177,7 +191,7 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* Formulário de Cadastro */}
+      {/* Formulário */}
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
           <h2 className="text-xl font-semibold mb-4">Cadastrar Novo Projeto</h2>
@@ -218,9 +232,7 @@ export default function ProjectsPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cliente
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input
                   type="text"
                   name="clientName"
@@ -232,9 +244,7 @@ export default function ProjectsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Horas Previstas
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horas Previstas</label>
                 <input
                   type="number"
                   name="budgetHours"
@@ -246,9 +256,7 @@ export default function ProjectsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Valor Total (R$)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total (R$)</label>
                 <input
                   type="number"
                   name="budgetValue"
@@ -286,61 +294,37 @@ export default function ProjectsPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('code')}
-                  title="Ordenar por código"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('code')} title="Ordenar por código">
                   <span className="uppercase">Código</span>
                   <span>{arrow('code')}</span>
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('name')}
-                  title="Ordenar por projeto"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('name')} title="Ordenar por projeto">
                   <span className="uppercase">Projeto</span>
                   <span>{arrow('name')}</span>
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('client_name')}
-                  title="Ordenar por cliente"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('client_name')} title="Ordenar por cliente">
                   <span className="uppercase">Cliente</span>
                   <span>{arrow('client_name')}</span>
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('budget_hours')}
-                  title="Ordenar por horas"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('budget_hours')} title="Ordenar por horas">
                   <span className="uppercase">Horas</span>
                   <span>{arrow('budget_hours')}</span>
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('budget_value')}
-                  title="Ordenar por valor"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('budget_value')} title="Ordenar por valor">
                   <span className="uppercase">Valor</span>
                   <span>{arrow('budget_value')}</span>
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
-                <button
-                  className={headerBtn}
-                  onClick={() => toggleSort('status')}
-                  title="Ordenar por status"
-                >
+                <button className={headerBtn} onClick={() => toggleSort('status')} title="Ordenar por status">
                   <span className="uppercase">Status</span>
                   <span>{arrow('status')}</span>
                 </button>
@@ -359,9 +343,7 @@ export default function ProjectsPage() {
                 </td>
                 <td className="px-4 py-1.5 text-gray-500">
                   {typeof project.budget_value === 'number'
-                    ? `R$ ${project.budget_value.toLocaleString('pt-BR', {
-                        minimumFractionDigits: 2
-                      })}`
+                    ? `R$ ${project.budget_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                     : '-'}
                 </td>
                 <td className="px-4 py-1.5">
