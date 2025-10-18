@@ -28,7 +28,6 @@ export default function ProjectsPage() {
     budgetValue: ''
   })
 
-  // Carregar projetos do Supabase
   useEffect(() => {
     loadProjects()
   }, [])
@@ -68,10 +67,8 @@ export default function ProjectsPage() {
 
       if (error) throw error
 
-      // Atualiza a lista com o novo projeto
       setProjects([data[0], ...projects])
 
-      // Limpa formulário
       setFormData({
         code: '',
         name: '',
@@ -213,32 +210,31 @@ export default function ProjectsPage() {
 
       {/* Lista de Projetos */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full">
+        <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Projeto</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Projeto</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {projects.map((project) => (
               <tr key={project.id} className="hover:bg-gray-50">
-                <td className="px-6 py-2 font-mono text-sm text-gray-900">{project.code}</td>
-                <td className="px-6 py-2 text-sm font-medium text-gray-900">{project.name}</td>
-                <td className="px-6 py-2 text-sm text-gray-500">{project.client_name || '-'}</td>
-                <td className="px-6 py-2 text-sm text-gray-500">{project.budget_hours ? `${project.budget_hours}h` : '-'}</td>
-                <td className="px-6 py-2 text-sm text-gray-500">
-                  {project.budget_value 
+                <td className="px-4 py-1.5 font-mono text-gray-900">{project.code}</td>
+                <td className="px-4 py-1.5 font-medium text-gray-900">{project.name}</td>
+                <td className="px-4 py-1.5 text-gray-500">{project.client_name || '-'}</td>
+                <td className="px-4 py-1.5 text-gray-500">{project.budget_hours ? `${project.budget_hours}h` : '-'}</td>
+                <td className="px-4 py-1.5 text-gray-500">
+                  {project.budget_value
                     ? `R$ ${project.budget_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : '-'
-                  }
+                    : '-'}
                 </td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                <td className="px-4 py-1.5">
+                  <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                     {project.status}
                   </span>
                 </td>
@@ -246,7 +242,7 @@ export default function ProjectsPage() {
             ))}
             {projects.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-3 text-center text-gray-500">
                   Nenhum projeto cadastrado ainda
                 </td>
               </tr>
