@@ -6,6 +6,7 @@ export function UserBadge() {
   const user = data?.user as { code?: string; name?: string; is_admin?: boolean } | undefined
   if (!user) return null
 
+  
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-white/90">
