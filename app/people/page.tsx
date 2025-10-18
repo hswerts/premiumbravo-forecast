@@ -80,7 +80,6 @@ export default function PeoplePage() {
         hourlyCost: ''
       })
       setShowForm(false)
-
     } catch (error) {
       console.error('Erro ao criar pessoa:', error)
       alert('Erro ao criar pessoa')
@@ -231,32 +230,31 @@ export default function PeoplePage() {
 
       {/* Lista de Pessoas */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full">
+        <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Custo Hora (R$)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Custo Hora (R$)</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {people.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-mono text-sm text-gray-900">{person.timesheet_code}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{person.full_name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{person.role}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{person.department}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+                <td className="px-4 py-1.5 font-mono text-gray-900">{person.timesheet_code}</td>
+                <td className="px-4 py-1.5 font-medium text-gray-900">{person.full_name}</td>
+                <td className="px-4 py-1.5 text-gray-500">{person.role}</td>
+                <td className="px-4 py-1.5 text-gray-500">{person.department}</td>
+                <td className="px-4 py-1.5 text-gray-500">
                   R$ {typeof person.hourly_cost === 'number' 
-                    ? person.hourly_cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                    : '0.00'
-                  }
+                      ? person.hourly_cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                      : '0,00'}
                 </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                <td className="px-4 py-1.5">
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                     person.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                     {person.active ? 'Ativo' : 'Inativo'}
@@ -266,7 +264,7 @@ export default function PeoplePage() {
             ))}
             {people.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-3 text-center text-gray-500">
                   Nenhuma pessoa cadastrada ainda
                 </td>
               </tr>
