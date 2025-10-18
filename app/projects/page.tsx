@@ -1,7 +1,7 @@
 // app/projects/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface Project {
@@ -15,11 +15,26 @@ interface Project {
   created_at?: string
 }
 
+type SortKey =
+  | 'code'
+  | 'name'
+  | 'client_name'
+  | 'budget_hours'
+  | 'budget_value'
+  | 'status'
+  | 'created_at'
+
+type SortDirection = 'asc' | 'desc'
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
-  
+
+  // estado de ordenação
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDirection>('desc')
+
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -28,6 +43,7 @@ export default function ProjectsPage() {
     budgetValue: ''
   })
 
+  // Carregar projetos do Supabase
   useEffect(() => {
     loadProjects()
   }, [])
@@ -57,7 +73,7 @@ export default function ProjectsPage() {
         name: formData.name,
         client_name: formData.clientName || null,
         budget_hours: formData.budgetHours ? parseFloat(formData.budgetHours) : null,
-        budget_value: formData.budgetValue ? parseFloat(formData.budgetValue) : null,
+        budget_value: formData.budgetValue ? parseFloat(formData.budgetValue) : null
       }
 
       const { data, error } = await supabase
@@ -77,7 +93,6 @@ export default function ProjectsPage() {
         budgetValue: ''
       })
       setShowForm(false)
-
     } catch (error) {
       console.error('Erro ao criar projeto:', error)
       alert('Erro ao criar projeto')
@@ -92,6 +107,63 @@ export default function ProjectsPage() {
       [e.target.name]: e.target.value
     })
   }
+
+  // --------- Ordenação em memória ----------
+  const sortedProjects = useMemo(() => {
+    const copy = [...projects]
+
+    const getVal = (p: Project, key: SortKey) => {
+      switch (key) {
+        case 'code':
+          return Number(p.code) || 0
+        case 'name':
+          return p.name || ''
+        case 'client_name':
+          return p.client_name || ''
+        case 'budget_hours':
+          return typeof p.budget_hours === 'number' ? p.budget_hours : -Infinity
+        case 'budget_value':
+          return typeof p.budget_value === 'number' ? p.budget_value : -Infinity
+        case 'status':
+          return p.status || ''
+        case 'created_at':
+          return p.created_at ? new Date(p.created_at).getTime() : -Infinity
+      }
+    }
+
+    copy.sort((a, b) => {
+      const va = getVal(a, sortKey)
+      const vb = getVal(b, sortKey)
+
+      let cmp = 0
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
+      }
+
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
+    return copy
+  }, [projects, sortKey, sortDir])
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const headerBtn =
+    'flex items-center gap-1 select-none cursor-pointer text-left text-xs font-medium uppercase'
+
+  const arrow = (key: SortKey) =>
+    sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
+
+  // -----------------------------------------
 
   return (
     <div className="container mx-auto p-6">
@@ -213,24 +285,83 @@ export default function ProjectsPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Projeto</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('code')}
+                  title="Ordenar por código"
+                >
+                  <span className="uppercase">Código</span>
+                  <span>{arrow('code')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('name')}
+                  title="Ordenar por projeto"
+                >
+                  <span className="uppercase">Projeto</span>
+                  <span>{arrow('name')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('client_name')}
+                  title="Ordenar por cliente"
+                >
+                  <span className="uppercase">Cliente</span>
+                  <span>{arrow('client_name')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('budget_hours')}
+                  title="Ordenar por horas"
+                >
+                  <span className="uppercase">Horas</span>
+                  <span>{arrow('budget_hours')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('budget_value')}
+                  title="Ordenar por valor"
+                >
+                  <span className="uppercase">Valor</span>
+                  <span>{arrow('budget_value')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button
+                  className={headerBtn}
+                  onClick={() => toggleSort('status')}
+                  title="Ordenar por status"
+                >
+                  <span className="uppercase">Status</span>
+                  <span>{arrow('status')}</span>
+                </button>
+              </th>
             </tr>
           </thead>
+
           <tbody className="divide-y divide-gray-200">
-            {projects.map((project) => (
+            {sortedProjects.map((project) => (
               <tr key={project.id} className="hover:bg-gray-50">
                 <td className="px-4 py-1.5 font-mono text-gray-900">{project.code}</td>
                 <td className="px-4 py-1.5 font-medium text-gray-900">{project.name}</td>
                 <td className="px-4 py-1.5 text-gray-500">{project.client_name || '-'}</td>
-                <td className="px-4 py-1.5 text-gray-500">{project.budget_hours ? `${project.budget_hours}h` : '-'}</td>
                 <td className="px-4 py-1.5 text-gray-500">
-                  {project.budget_value
-                    ? `R$ ${project.budget_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                  {typeof project.budget_hours === 'number' ? `${project.budget_hours}h` : '-'}
+                </td>
+                <td className="px-4 py-1.5 text-gray-500">
+                  {typeof project.budget_value === 'number'
+                    ? `R$ ${project.budget_value.toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2
+                      })}`
                     : '-'}
                 </td>
                 <td className="px-4 py-1.5">
@@ -240,7 +371,7 @@ export default function ProjectsPage() {
                 </td>
               </tr>
             ))}
-            {projects.length === 0 && (
+            {sortedProjects.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-3 text-center text-gray-500">
                   Nenhum projeto cadastrado ainda
