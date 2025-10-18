@@ -1,7 +1,7 @@
 // app/people/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface Person {
@@ -15,11 +15,28 @@ interface Person {
   created_at?: string
 }
 
+type SortKey =
+  | 'timesheet_code'
+  | 'full_name'
+  | 'role'
+  | 'department'
+  | 'hourly_cost'
+  | 'active'
+  | 'created_at'
+
+type SortDirection = 'asc' | 'desc'
+
+const STORAGE_KEY = 'peopleSort-v1'
+
 export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
-  
+
+  // ordenação
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDirection>('desc')
+
   const [formData, setFormData] = useState({
     timesheetCode: '',
     fullName: '',
@@ -28,7 +45,34 @@ export default function PeoplePage() {
     hourlyCost: ''
   })
 
-  // Carregar pessoas do Supabase
+  // ---- carregar ordenação salva ----
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved) as { key?: string; dir?: SortDirection }
+
+      const validKeys: SortKey[] = [
+        'timesheet_code','full_name','role','department','hourly_cost','active','created_at'
+      ]
+      if (parsed.key && (validKeys as string[]).includes(parsed.key)) {
+        setSortKey(parsed.key as SortKey)
+      }
+      if (parsed.dir === 'asc' || parsed.dir === 'desc') {
+        setSortDir(parsed.dir)
+      }
+    } catch {
+      /* ignora erros de parse */
+    }
+  }, [])
+
+  // ---- salvar ordenação ----
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ key: sortKey, dir: sortDir }))
+  }, [sortKey, sortDir])
+
   useEffect(() => {
     loadPeople()
   }, [])
@@ -68,10 +112,8 @@ export default function PeoplePage() {
 
       if (error) throw error
 
-      // Atualiza a lista com a nova pessoa
       setPeople([data[0], ...people])
 
-      // Limpa formulário
       setFormData({
         timesheetCode: '',
         fullName: '',
@@ -95,7 +137,60 @@ export default function PeoplePage() {
     })
   }
 
-  // Lista de departamentos e cargos
+  // ordenação em memória
+  const sortedPeople = useMemo(() => {
+    const copy = [...people]
+
+    const getVal = (p: Person, key: SortKey) => {
+      switch (key) {
+        case 'timesheet_code':
+          return Number(p.timesheet_code) || 0
+        case 'full_name':
+          return p.full_name || ''
+        case 'role':
+          return p.role || ''
+        case 'department':
+          return p.department || ''
+        case 'hourly_cost':
+          return typeof p.hourly_cost === 'number' ? p.hourly_cost : -Infinity
+        case 'active':
+          return p.active ? 1 : 0
+        case 'created_at':
+          return p.created_at ? new Date(p.created_at).getTime() : -Infinity
+      }
+    }
+
+    copy.sort((a, b) => {
+      const va = getVal(a, sortKey)
+      const vb = getVal(b, sortKey)
+
+      let cmp = 0
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
+      }
+
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
+    return copy
+  }, [people, sortKey, sortDir])
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const headerBtn =
+    'flex items-center gap-1 select-none cursor-pointer text-left text-xs font-medium uppercase'
+  const arrow = (key: SortKey) =>
+    sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
+
   const departments = ['Auditoria', 'Consultoria', 'Administrativo', 'TI', 'Financeiro']
   const roles = ['Auditor Júnior', 'Auditor Pleno', 'Auditor Sênior', 'Gerente', 'Coordenador', 'Estagiário', 'Analista']
 
@@ -233,23 +328,54 @@ export default function PeoplePage() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Custo Hora (R$)</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('timesheet_code')} title="Ordenar por código">
+                  <span className="uppercase">Código</span>
+                  <span>{arrow('timesheet_code')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('full_name')} title="Ordenar por nome">
+                  <span className="uppercase">Nome</span>
+                  <span>{arrow('full_name')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('role')} title="Ordenar por cargo">
+                  <span className="uppercase">Cargo</span>
+                  <span>{arrow('role')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('department')} title="Ordenar por departamento">
+                  <span className="uppercase">Departamento</span>
+                  <span>{arrow('department')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('hourly_cost')} title="Ordenar por custo hora">
+                  <span className="uppercase">Custo Hora (R$)</span>
+                  <span>{arrow('hourly_cost')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('active')} title="Ordenar por status">
+                  <span className="uppercase">Status</span>
+                  <span>{arrow('active')}</span>
+                </button>
+              </th>
             </tr>
           </thead>
+
           <tbody className="divide-y divide-gray-200">
-            {people.map((person) => (
+            {sortedPeople.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
                 <td className="px-4 py-1.5 font-mono text-gray-900">{person.timesheet_code}</td>
                 <td className="px-4 py-1.5 font-medium text-gray-900">{person.full_name}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.role}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.department}</td>
                 <td className="px-4 py-1.5 text-gray-500">
-                  R$ {typeof person.hourly_cost === 'number' 
+                  R$ {typeof person.hourly_cost === 'number'
                       ? person.hourly_cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
                       : '0,00'}
                 </td>
@@ -262,7 +388,7 @@ export default function PeoplePage() {
                 </td>
               </tr>
             ))}
-            {people.length === 0 && (
+            {sortedPeople.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-3 text-center text-gray-500">
                   Nenhuma pessoa cadastrada ainda
