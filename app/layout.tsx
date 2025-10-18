@@ -8,7 +8,7 @@ import './globals.css'
 
 // ⬇️ ADICIONE: provider do NextAuth e o UserBadge
 import { SessionProvider } from 'next-auth/react'
-import { UserBadge } from '@/components/UserBadge'
+import { UserBadge } from './components/UserBadge'
 
 export default function RootLayout({
   children,
