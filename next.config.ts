@@ -3,18 +3,16 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    appDir: true,
-  },
   images: {
-    unoptimized: false, // Vercel suporta otimização de imagens
+    // Vercel já otimiza imagens; pode deixar "false" para usar <Image> normalmente
+    unoptimized: false,
   },
   async redirects() {
     return [
       {
-        source: "/",            // quando acessar a raiz
-        destination: "/projects", // redireciona para a página de projetos
-        permanent: false,        // 307 temporário
+        source: "/",
+        destination: "/projects",
+        permanent: false, // redireciona a home para /projects
       },
     ]
   },
