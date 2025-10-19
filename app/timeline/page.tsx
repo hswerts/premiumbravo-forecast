@@ -162,24 +162,28 @@ export default function TimelinePage() {
     }
   }
 
-  // Gerar semana atual (segunda a sexta)
-  const generateWeek = () => {
-    const today = new Date()
-    const currentDay = today.getDay()
-    const currentDate = today.getDate()
-    
-    // Encontrar segunda-feira da semana atual
-    const monday = new Date(today)
-    monday.setDate(currentDate - currentDay + (currentDay === 0 ? -6 : 1))
-    
-    const week = []
-    for (let i = 0; i < 5; i++) {
-      const day = new Date(monday)
-      day.setDate(monday.getDate() + i)
-      week.push(day)
-    }
-    
-    setCurrentWeek(week)
+  // Gerar semana (domingo a sábado)
+// use: generateWeek() para a semana atual
+//      generateWeek(-1) semana anterior, generateWeek(1) próxima, etc.
+const generateWeek = (offset: number = 0) => {
+  // base = hoje deslocado por 'offset' semanas
+  const base = new Date()
+  base.setHours(0, 0, 0, 0)
+  base.setDate(base.getDate() + offset * 7)
+
+  // encontrar o domingo da semana-base
+  const sunday = new Date(base)
+  const dow = sunday.getDay() // 0=domingo, 6=sábado
+  sunday.setDate(sunday.getDate() - dow)
+
+  // montar os 7 dias (dom → sáb)
+  const week: Date[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sunday)
+    d.setDate(sunday.getDate() + i)
+    return d
+  })
+
+  setCurrentWeek(week)
   }
 
   // Formatar data para exibição
@@ -365,14 +369,7 @@ export default function TimelinePage() {
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-900">
                     {person.full_name}
-                  </div>
-                  <div className="text-sm text-gray-500">{person.role}</div>
-                  <div className="text-xs text-gray-400">
-                    R$ {typeof person.hourly_cost === 'number' 
-                      ? person.hourly_cost.toFixed(2)
-                      : '0.00'
-                    }/h
-                  </div>
+                  </div>                  
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
