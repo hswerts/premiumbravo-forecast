@@ -30,6 +30,17 @@ interface Assignment {
   created_at?: string
 }
 
+/* ===== Helpers de data/visual ===== */
+const isWeekend = (d: Date) => {
+  const dow = d.getDay() // 0 = dom, 6 = sáb
+  return dow === 0 || dow === 6
+}
+
+const mustWarn = (d: Date, totalHoursForCell: number) => {
+  // fim de semana: qualquer hora fica vermelho; dia útil: > 8h
+  return isWeekend(d) ? totalHoursForCell > 0 : totalHoursForCell > 8
+}
+
 export default function TimelinePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -163,27 +174,27 @@ export default function TimelinePage() {
   }
 
   // Gerar semana (domingo a sábado)
-// use: generateWeek() para a semana atual
-//      generateWeek(-1) semana anterior, generateWeek(1) próxima, etc.
-const generateWeek = (offset: number = 0) => {
-  // base = hoje deslocado por 'offset' semanas
-  const base = new Date()
-  base.setHours(0, 0, 0, 0)
-  base.setDate(base.getDate() + offset * 7)
+  // use: generateWeek() para a semana atual
+  //      generateWeek(-1) semana anterior, generateWeek(1) próxima, etc.
+  const generateWeek = (offset: number = 0) => {
+    // base = hoje deslocado por 'offset' semanas
+    const base = new Date()
+    base.setHours(0, 0, 0, 0)
+    base.setDate(base.getDate() + offset * 7)
 
-  // encontrar o domingo da semana-base
-  const sunday = new Date(base)
-  const dow = sunday.getDay() // 0=domingo, 6=sábado
-  sunday.setDate(sunday.getDate() - dow)
+    // encontrar o domingo da semana-base
+    const sunday = new Date(base)
+    const dow = sunday.getDay() // 0=domingo, 6=sábado
+    sunday.setDate(sunday.getDate() - dow)
 
-  // montar os 7 dias (dom → sáb)
-  const week: Date[] = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(sunday)
-    d.setDate(sunday.getDate() + i)
-    return d
-  })
+    // montar os 7 dias (dom → sáb)
+    const week: Date[] = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday)
+      d.setDate(sunday.getDate() + i)
+      return d
+    })
 
-  setCurrentWeek(week)
+    setCurrentWeek(week)
   }
 
   // Formatar data para exibição
@@ -261,7 +272,7 @@ const generateWeek = (offset: number = 0) => {
     }
   }
 
-  // Navegar entre semanas
+  // Navegar entre semanas (mantive sua lógica original)
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newWeek = currentWeek.map(day => {
       const newDate = new Date(day)
@@ -269,11 +280,6 @@ const generateWeek = (offset: number = 0) => {
       return newDate
     })
     setCurrentWeek(newWeek)
-  }
-
-  // Verificar se pessoa está sobrecarregada em um dia
-  const isOverloaded = (personId: string, date: string) => {
-    return getTotalHoursPerDay(personId, date) > 8
   }
 
   // Editar horas de uma alocação
@@ -298,7 +304,7 @@ const generateWeek = (offset: number = 0) => {
   const getProjectDisplayName = (project: Project | undefined) => {
     if (!project) return "Projeto Não Encontrado"
     
-    const maxLength = 10
+    const maxLength = 28 // aumentei um pouco para caber em 1 linha
     let projectName = project.name
     
     if (projectName.length > maxLength) {
@@ -367,15 +373,16 @@ const generateWeek = (offset: number = 0) => {
             {people.map((person) => (
               <tr key={person.id} className="border-b">
                 <td className="px-4 py-3">
+                  {/* Só o nome da pessoa */}
                   <div className="font-medium text-gray-900">
                     {person.full_name}
-                  </div>                  
+                  </div>
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
                   const dateString = date.toISOString().split('T')[0]
                   const totalHours = getTotalHoursPerDay(person.id, dateString)
-                  const isOver = isOverloaded(person.id, dateString)
+                  const warning = mustWarn(date, totalHours)
                   
                   return (
                     <td 
@@ -387,51 +394,49 @@ const generateWeek = (offset: number = 0) => {
                       }}
                       onDrop={() => handleDrop(person.id, dateString)}
                     >
-                      <div className={`p-2 rounded border-2 border-dashed border-gray-300 min-h-16 ${
-                        isOver ? 'bg-red-50 border-red-200' : 'bg-gray-50'
+                      <div className={`p-2 rounded border-2 border-dashed min-h-16 ${
+                        warning ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-300'
                       }`}>
                         {assignments
                           .filter(a => a.person_id === person.id && a.date === dateString)
                           .map((assignment) => {
                             const project = projects.find(p => p.id === assignment.project_id)
+                            // Uma linha: nome do projeto + input de horas ao lado
                             return (
                               <div
                                 key={assignment.id}
                                 className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-sm"
                               >
-                                <div className="flex justify-between items-center">
-                                  <span className="font-medium text-xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-xs truncate">
                                     {getProjectDisplayName(project)}
                                   </span>
-                                  <button
-                                    onClick={() => removeAssignment(assignment.id)}
-                                    className="text-red-500 hover:text-red-700 text-xs ml-1"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                                <div className="flex items-center justify-between mt-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="24"
-                                    step="0.5"
-                                    value={assignment.hours}
-                                    onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
-                                    className="w-12 text-xs border rounded px-1 py-0.5"
-                                  />
-                                  <span className="text-xs text-gray-600">horas</span>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={24}
+                                      step={0.5}
+                                      value={assignment.hours}
+                                      onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
+                                      className="w-14 text-xs border rounded px-1 py-0.5"
+                                    />
+                                    <span className="text-xs text-gray-600">h</span>
+                                    <button
+                                      onClick={() => removeAssignment(assignment.id)}
+                                      className="text-red-500 hover:text-red-700 text-xs ml-1"
+                                      aria-label="Remover alocação"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             )
                           })
                         }
-                        
-                        {totalHours > 0 && (
-                          <div className={`text-xs mt-1 ${isOver ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                            Total: {totalHours}h {isOver && ' ⚠️'}
-                          </div>
-                        )}
+
+                        {/* Sem “Total: Xh” — removido para ganhar espaço */}
                       </div>
                     </td>
                   )
@@ -449,7 +454,7 @@ const generateWeek = (offset: number = 0) => {
           <li>• <strong>Arraste os projetos</strong> para os dias da semana de cada pessoa</li>
           <li>• <strong>Ajuste as horas</strong> diretamente no input de cada alocação</li>
           <li>• <strong>Clique no ×</strong> para remover uma alocação</li>
-          <li>• <strong>Vermelho</strong> indica sobrecarga (&gt;8h/dia)</li>
+          <li>• <strong>Vermelho</strong> indica: dias úteis &gt; 8h, ou qualquer hora no fim de semana</li>
           <li>• <strong>Dados salvos automaticamente</strong> no banco de dados</li>
         </ul>
       </div>
