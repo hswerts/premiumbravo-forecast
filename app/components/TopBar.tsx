@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserBadge } from '@/components/UserBadge'
+import { UserBadge } from './UserBadge'
 
 export default function TopBar() {
   const pathname = usePathname()
