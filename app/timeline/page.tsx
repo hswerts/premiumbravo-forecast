@@ -142,7 +142,6 @@ export default function TimelinePage() {
       }
 
       // Remove assignments que não estão mais na lista
-      const currentAssignmentIds = updatedAssignments.map(a => a.id)
       const { data: allAssignments } = await supabase
         .from('assignments')
         .select('id, person_id, project_id, date')
@@ -304,7 +303,7 @@ export default function TimelinePage() {
   const getProjectDisplayName = (project: Project | undefined) => {
     if (!project) return "Projeto Não Encontrado"
     
-    const maxLength = 28 // aumentei um pouco para caber em 1 linha
+    const maxLength = 28 // cabe em 1 linha com as larguras definidas
     let projectName = project.name
     
     if (projectName.length > maxLength) {
@@ -353,7 +352,15 @@ export default function TimelinePage() {
 
       {/* Timeline */}
       <div className="bg-white rounded-lg shadow-md overflow-auto">
-        <table className="min-w-full">
+        <table className="min-w-full table-fixed">
+          {/* Larguras fixas: 1ª coluna (pessoa) + colunas/dia iguais */}
+          <colgroup>
+            <col className="w-64" /> {/* Pessoa */}
+            {currentWeek.map((_, i) => (
+              <col key={i} className="w-44" /> {/* cada dia */}
+            ))}
+          </colgroup>
+
           <thead>
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 border-b">
@@ -369,6 +376,7 @@ export default function TimelinePage() {
               ))}
             </tr>
           </thead>
+
           <tbody>
             {people.map((person) => (
               <tr key={person.id} className="border-b">
@@ -401,14 +409,14 @@ export default function TimelinePage() {
                           .filter(a => a.person_id === person.id && a.date === dateString)
                           .map((assignment) => {
                             const project = projects.find(p => p.id === assignment.project_id)
-                            // Uma linha: nome do projeto + input de horas ao lado
+                            // Uma linha: nome do projeto + input de horas ao lado (com truncamento)
                             return (
                               <div
                                 key={assignment.id}
                                 className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-sm"
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium text-xs truncate">
+                                <div className="flex items-center justify-between gap-2 min-w-0">
+                                  <span className="font-medium text-xs truncate min-w-0 flex-1">
                                     {getProjectDisplayName(project)}
                                   </span>
                                   <div className="flex items-center gap-2">
