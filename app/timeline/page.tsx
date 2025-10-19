@@ -357,7 +357,7 @@ export default function TimelinePage() {
           <colgroup>
             <col className="w-64" /> {/* Pessoa */}
             {currentWeek.map((_, i) => (
-              <col key={i} className="w-44" /> {/* cada dia */}
+              <col key={i} className="w-44" />
             ))}
           </colgroup>
 
