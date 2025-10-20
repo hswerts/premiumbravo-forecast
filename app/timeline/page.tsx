@@ -415,7 +415,7 @@ export default function TimelinePage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className="px-4 py-1 border-l border-gray-200 overflow-hidden"
+                      className="px-1.5 py-1 border-l border-gray-200 overflow-hidden"
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
