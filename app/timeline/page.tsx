@@ -352,12 +352,12 @@ export default function TimelinePage() {
 
       {/* Timeline */}
       <div className="bg-white rounded-lg shadow-md overflow-auto">
-        <table className="min-w-full table-fixed">
+        <table className="w-full table-fixed">
           {/* Larguras fixas: 1ª coluna (pessoa) + colunas/dia iguais */}
           <colgroup>
-            <col className="w-64" /> {/* Pessoa */}
+            <col style={{ width: '16rem' }} /> {/* Pessoa */}
             {currentWeek.map((_, i) => (
-              <col key={i} className="w-44" />
+              <col key={i} style={{ width: '11rem' }} />
             ))}
           </colgroup>
 
@@ -395,7 +395,7 @@ export default function TimelinePage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className="px-4 py-3 border-l border-gray-200 min-w-40"
+                      className="px-4 py-3 border-l border-gray-200 overflow-hidden"
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
