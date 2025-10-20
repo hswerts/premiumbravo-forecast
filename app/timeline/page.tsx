@@ -422,7 +422,7 @@ export default function TimelinePage() {
                       }}
                       onDrop={() => handleDrop(person.id, dateString)}
                     >
-                      <div className={`p-2 rounded border-2 border-dashed min-h-10 transition-colors duration-300 ${
+                      <div className={`p-2 rounded border-2 border-dashed min-h-10 transition-colors duration-500 ${
                         warning ? 'bg-red-100 border-red-300' : 'bg-gray-60 border-gray-300'
                       }`}>
                         {assignments
