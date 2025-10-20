@@ -64,6 +64,7 @@ export default function TimelinePage() {
   // abre o menu em uma célula específica
   const openCtxMenu = (e: React.MouseEvent, personId: string, dateISO: string) => {
     e.preventDefault()
+    e.stopPropagation()
     setCtxMenu({
       show: true,
       x: e.clientX,
@@ -517,6 +518,7 @@ export default function TimelinePage() {
                         e.dataTransfer.dropEffect = 'copy'
                       }}
                       onDrop={() => handleDrop(person.id, dateString)}
+                      onContextMenuCapture={(e) => openCtxMenu(e, person.id, dateString)}
                       onContextMenu={(e) => openCtxMenu(e, person.id, dateString)}
                     >
                       <div className={`p-2 rounded border-2 border-dashed min-h-10 transition-colors duration-500 ${
