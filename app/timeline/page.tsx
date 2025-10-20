@@ -416,7 +416,8 @@ export default function TimelinePage() {
                                 className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-sm"
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="font-medium text-xs truncate min-w-0 flex-1">
+                                  <span className="font-medium text-xs truncate min-w-0 flex-1"
+                                  title={project?.name || ''}>
                                     {getProjectDisplayName(project)}
                                   </span>
                                   <div className="flex items-center gap-2">
