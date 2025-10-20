@@ -377,14 +377,23 @@ export default function TimelinePage() {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 border-b">
                 Pessoa / Data
               </th>
-              {currentWeek.map((date, index) => (
-                <th 
-                  key={index}
-                  className="px-4 py-3 text-center text-sm font-medium text-gray-700 bg-gray-50 border-b"
-                >
-                  {formatDate(date)}
-                </th>
-              ))}
+
+              {currentWeek.map((date, index) => {
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6
+
+                return (
+                  <th
+                    key={index}
+                    className={`px-4 py-3 text-center text-sm font-medium border-b ${
+                      isWeekend
+                        ? 'bg-gray-100 text-gray-500'
+                        : 'bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    {formatDate(date)}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
 
