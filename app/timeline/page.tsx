@@ -374,7 +374,7 @@ export default function TimelinePage() {
 
           <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 border-b">
+              <th className="px-4 py-1 text-left text-sm font-medium text-gray-700 bg-gray-50 border-b">
                 Pessoa / Data
               </th>
 
@@ -384,7 +384,7 @@ export default function TimelinePage() {
                 return (
                   <th
                     key={index}
-                    className={`px-4 py-3 text-center text-sm font-medium border-b ${
+                    className={`px-4 py-1 text-center text-sm font-medium border-b ${
                       isWeekend
                         ? 'bg-gray-100 text-gray-500'
                         : 'bg-gray-50 text-gray-700'
@@ -400,7 +400,7 @@ export default function TimelinePage() {
           <tbody>
             {people.map((person) => (
               <tr key={person.id} className="border-b">
-                <td className="px-4 py-3">
+                <td className="px-4 py-1">
                   {/* Só o nome da pessoa */}
                   <div className="font-medium text-gray-900">
                     {person.full_name}
@@ -415,7 +415,7 @@ export default function TimelinePage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className="px-4 py-3 border-l border-gray-200 overflow-hidden"
+                      className="px-4 py-1 border-l border-gray-200 overflow-hidden"
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
