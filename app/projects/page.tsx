@@ -68,9 +68,15 @@ export default function ReportsPage() {
         .order('code', { ascending: false });
 
       if (error) throw error;
-      setProjects((data ?? []) as Project[]);
-    } catch (err: unknown) {
-      console.error('Erro ao carregar projetos:', err);
+      setProjects (data ?? []);      
+    } catch (err) {
+      if (err instanceof Error) {        
+      console.error('Erro ao carregar projetos:', err.message);
+      alert(`Erro ao carregar projects: ${err.message}`);
+    } else {
+      console.error('Erro ao carregar projects:', err);
+      alert('Erro ao carregar projects.');
+    }
     }
     // supabase é import estático, não muda; deps vazias são adequadas.
   }, []);
