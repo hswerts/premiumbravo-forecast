@@ -415,7 +415,7 @@ export default function TimelinePage() {
                                 key={assignment.id}
                                 className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-sm"
                               >
-                                <div className="flex items-center justify-between gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
                                   <span className="font-medium text-xs truncate min-w-0 flex-1">
                                     {getProjectDisplayName(project)}
                                   </span>
@@ -423,20 +423,23 @@ export default function TimelinePage() {
                                     <input
                                       type="number"
                                       min={0}
-                                      max={24}
-                                      step={0.5}
+                                      max={19}
+                                      step={1}
                                       value={assignment.hours}
                                       onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
-                                      className="w-14 text-xs border rounded px-1 py-0.5"
+                                      inputMode="decimal"
+                                      className="w-8 text-xs text-right border rounded px-0.5 py-0.5 focus:outline-none"
+                                      aria-label="Horas"
+                                      title="Horas"
                                     />
-                                    <span className="text-xs text-gray-600">h</span>
-                                    <button
-                                      onClick={() => removeAssignment(assignment.id)}
-                                      className="text-red-500 hover:text-red-700 text-xs ml-1"
-                                      aria-label="Remover alocação"
-                                    >
-                                      ×
-                                    </button>
+
+                                      <button
+                                       onClick={() => removeAssignment(assignment.id)}
+                                       className="text-red-500 hover:text-red-700 text-xs"
+                                        aria-label="Remover alocação"
+                                      >
+                                        ×
+                                      </button>
                                   </div>
                                 </div>
                               </div>
