@@ -354,11 +354,22 @@ export default function TimelinePage() {
       <div className="bg-white rounded-lg shadow-md overflow-auto">
         <table className="w-full table-fixed">
           {/* Larguras fixas: 1ª coluna (pessoa) + colunas/dia iguais */}
+
           <colgroup>
             <col style={{ width: '11rem' }} /> {/* Pessoa */}
-            {currentWeek.map((_, i) => (
-              <col key={i} style={{ width: '13rem' }} />
-            ))}
+            {currentWeek.map((date, i) => {
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6
+            return (
+              <col
+                key={i}
+                style={{
+                  width: isWeekend ? '8rem' : '13rem',
+                  backgroundColor: isWeekend ? '#f5f5f5' : undefined, // leve cinza para fins de semana
+                }}
+              />
+             )
+            })}
+
           </colgroup>
 
           <thead>
