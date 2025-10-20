@@ -1,362 +1,445 @@
 // app/projects/page.tsx
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+
+type ProjectType =
+  | 'Auditoria Interna'
+  | 'Inventários'
+  | 'CVM 88'
+  | 'Projetos Especiais'
+  | 'Outros'
 
 interface Project {
   id: string
   code: string
   name: string
-  client_name?: string
-  budget_hours?: number
-  budget_value?: number
+  client_name?: string | null
+  budget_hours?: number | null
+  budget_value?: number | null
   status: string
+  // novos
+  project_type?: ProjectType | null
+  deadline?: string | null // yyyy-mm-dd
+  manager_id?: string | null
   created_at?: string
+  updated_at?: string
 }
 
-type SortKey =
-  | 'code'
-  | 'name'
-  | 'client_name'
-  | 'budget_hours'
-  | 'budget_value'
-  | 'status'
-  | 'created_at'
+interface Person {
+  id: string
+  full_name: string
+}
 
-type SortDirection = 'asc' | 'desc'
+const TYPE_OPTIONS: ProjectType[] = [
+  'Auditoria Interna',
+  'Inventários',
+  'CVM 88',
+  'Projetos Especiais',
+  'Outros',
+]
 
-const STORAGE_KEY = 'projectsSort-v1'
+// util — garante yyyy-mm-dd
+function toDateInputValue(d?: string | null) {
+  if (!d) return ''
+  // se já vier yyyy-mm-dd, retorna
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+  // tenta extrair de um ISO completo
+  const dt = new Date(d)
+  if (Number.isNaN(dt.getTime())) return ''
+  const yyyy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
+  const [people, setPeople] = useState<Person[]>([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // estado de ordenação
-  const [sortKey, setSortKey] = useState<SortKey>('created_at')
-  const [sortDir, setSortDir] = useState<SortDirection>('desc')
+  // null => criar; Project => editar
+  const [editing, setEditing] = useState<Project | null>(null)
 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
     clientName: '',
     budgetHours: '',
-    budgetValue: ''
+    budgetValue: '',
+    status: 'Ativo', // ajuste se tiver lista de status
+    projectType: '' as '' | ProjectType,
+    deadline: '',
+    managerId: '',
   })
 
-  // --- carregar ordenação salva ---
-  useEffect(() => {
-    try {
-      if (typeof window === 'undefined') return
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return
-      const parsed = JSON.parse(saved) as { key?: string; dir?: SortDirection }
-
-      const validKeys: SortKey[] = [
-        'code', 'name', 'client_name', 'budget_hours', 'budget_value', 'status', 'created_at'
-      ]
-      if (parsed.key && (validKeys as string[]).includes(parsed.key)) {
-        setSortKey(parsed.key as SortKey)
-      }
-      if (parsed.dir === 'asc' || parsed.dir === 'desc') {
-        setSortDir(parsed.dir)
-      }
-    } catch {
-      /* ignora erros */
-    }
-  }, [])
-
-  // --- salvar ordenação ---
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ key: sortKey, dir: sortDir }))
-  }, [sortKey, sortDir])
-
-  // --- carregar projetos ---
   useEffect(() => {
     loadProjects()
+    loadPeople()
   }, [])
 
   const loadProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setProjects(data || [])
-    } catch (error) {
-      console.error('Erro ao carregar projetos:', error)
+    if (error) {
+      console.error(error)
       alert('Erro ao carregar projetos')
+      return
     }
+    setProjects((data || []) as Project[])
+  }
+
+  const loadPeople = async () => {
+    const { data, error } = await supabase
+      .from('people')
+      .select('id, full_name')
+      .order('full_name', { ascending: true })
+
+    if (error) {
+      console.error(error)
+      alert('Erro ao carregar equipe (people)')
+      return
+    }
+    setPeople((data || []) as Person[])
+  }
+
+  const resetForm = () => {
+    setEditing(null)
+    setFormData({
+      code: '',
+      name: '',
+      clientName: '',
+      budgetHours: '',
+      budgetValue: '',
+      status: 'Ativo',
+      projectType: '',
+      deadline: '',
+      managerId: '',
+    })
+  }
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleEdit = (p: Project) => {
+    setEditing(p)
+    setShowForm(true)
+    setFormData({
+      code: p.code ?? '',
+      name: p.name ?? '',
+      clientName: p.client_name ?? '',
+      budgetHours: p.budget_hours != null ? String(p.budget_hours) : '',
+      budgetValue: p.budget_value != null ? String(p.budget_value) : '',
+      status: p.status ?? 'Ativo',
+      projectType: (p.project_type ?? '') as '' | ProjectType,
+      deadline: toDateInputValue(p.deadline),
+      managerId: p.manager_id ?? '',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    if (!formData.code.trim() || !formData.name.trim()) {
+      alert('Preencha ao menos Código e Nome do projeto.')
+      return
+    }
 
+    setLoading(true)
     try {
-      const newProject = {
-        code: formData.code,
-        name: formData.name,
-        client_name: formData.clientName || null,
-        budget_hours: formData.budgetHours ? parseFloat(formData.budgetHours) : null,
-        budget_value: formData.budgetValue ? parseFloat(formData.budgetValue) : null
+      // conversões
+      const budget_hours =
+        formData.budgetHours.trim() === ''
+          ? null
+          : Number(formData.budgetHours.replace(',', '.'))
+      const budget_value =
+        formData.budgetValue.trim() === ''
+          ? null
+          : Number(formData.budgetValue.replace(',', '.'))
+
+      if (
+        budget_hours != null &&
+        (Number.isNaN(budget_hours) || budget_hours < 0)
+      ) {
+        alert('Horas orçadas inválidas.')
+        return
+      }
+      if (
+        budget_value != null &&
+        (Number.isNaN(budget_value) || budget_value < 0)
+      ) {
+        alert('Valor orçado inválido.')
+        return
       }
 
-      const { data, error } = await supabase
-        .from('projects')
-        .insert([newProject])
-        .select()
+      const payload = {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        client_name: formData.clientName.trim() || null,
+        budget_hours,
+        budget_value,
+        status: formData.status,
+        project_type: formData.projectType || null,
+        deadline: formData.deadline || null, // yyyy-mm-dd
+        manager_id: formData.managerId || null,
+      }
 
-      if (error) throw error
+      if (editing) {
+        const { error } = await supabase
+          .from('projects')
+          .update(payload)
+          .eq('id', editing.id)
 
-      setProjects([data[0], ...projects])
+        if (error) throw error
+        alert('Projeto atualizado com sucesso!')
+      } else {
+        const { error } = await supabase.from('projects').insert(payload)
+        if (error) throw error
+        alert('Projeto criado com sucesso!')
+      }
 
-      setFormData({
-        code: '',
-        name: '',
-        clientName: '',
-        budgetHours: '',
-        budgetValue: ''
-      })
+      await loadProjects()
+      resetForm()
       setShowForm(false)
-    } catch (error) {
-      console.error('Erro ao criar projeto:', error)
-      alert('Erro ao criar projeto')
+    } catch (err: any) {
+      console.error(err)
+      alert('Erro ao salvar o projeto. Verifique as permissões/RLS.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  // --- ordenação em memória ---
-  const sortedProjects = useMemo(() => {
-    const copy = [...projects]
-
-    const getVal = (p: Project, key: SortKey) => {
-      switch (key) {
-        case 'code': return Number(p.code) || 0
-        case 'name': return p.name || ''
-        case 'client_name': return p.client_name || ''
-        case 'budget_hours': return typeof p.budget_hours === 'number' ? p.budget_hours : -Infinity
-        case 'budget_value': return typeof p.budget_value === 'number' ? p.budget_value : -Infinity
-        case 'status': return p.status || ''
-        case 'created_at': return p.created_at ? new Date(p.created_at).getTime() : -Infinity
-      }
-    }
-
-    copy.sort((a, b) => {
-      const va = getVal(a, sortKey)
-      const vb = getVal(b, sortKey)
-
-      let cmp = 0
-      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb
-      else cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
-
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-
-    return copy
-  }, [projects, sortKey, sortDir])
-
-  const toggleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('asc') }
-  }
-
-  const headerBtn =
-    'flex items-center gap-1 select-none cursor-pointer text-left text-xs font-medium uppercase'
-  const arrow = (key: SortKey) =>
-    sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
-
-  // --- UI ---
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Projetos PremiumBravo</h1>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Projetos</h1>
         <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          className="px-4 py-2 rounded-lg bg-black text-white"
+          onClick={() => {
+            resetForm()
+            setShowForm(s => !s)
+          }}
         >
-          + Novo Projeto
+          {showForm ? 'Fechar formulário' : 'Novo projeto'}
         </button>
       </div>
 
-      {/* Formulário */}
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <h2 className="text-xl font-semibold mb-4">Cadastrar Novo Projeto</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Código (4 números) *
-                </label>
-                <input
-                  type="text"
-                  name="code"
-                  value={formData.code}
-                  onChange={handleChange}
-                  pattern="\d{4}"
-                  maxLength={4}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: 1234"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome do Projeto *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: Auditoria Contábil 2024"
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Código</label>
+              <input
+                type="text"
+                name="code"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.code}
+                onChange={handleChange}
+                placeholder="Ex.: PB-2025-001"
+                required
+              />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                <input
-                  type="text"
-                  name="clientName"
-                  value={formData.clientName}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome do cliente"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Horas Previstas</label>
-                <input
-                  type="number"
-                  name="budgetHours"
-                  value={formData.budgetHours}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: 160"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total (R$)</label>
-                <input
-                  type="number"
-                  name="budgetValue"
-                  value={formData.budgetValue}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: 25000"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome</label>
+              <input
+                type="text"
+                name="name"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Ex.: Auditoria HS Financeira 2025"
+                required
+              />
             </div>
 
-            <div className="flex gap-2 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Cliente
+              </label>
+              <input
+                type="text"
+                name="clientName"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.clientName}
+                onChange={handleChange}
+                placeholder="Ex.: HS Financeira"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Status
+              </label>
+              <input
+                type="text"
+                name="status"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.status}
+                onChange={handleChange}
+                placeholder="Ex.: Ativo, Pausado, Encerrado"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Horas orçadas
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                name="budgetHours"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.budgetHours}
+                onChange={handleChange}
+                placeholder="Ex.: 120"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Valor orçado (R$)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="budgetValue"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.budgetValue}
+                onChange={handleChange}
+                placeholder="Ex.: 45000"
+              />
+            </div>
+
+            {/* novos campos */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Tipo do Projeto
+              </label>
+              <select
+                name="projectType"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.projectType}
+                onChange={handleChange}
               >
-                {loading ? 'Salvando...' : 'Salvar Projeto'}
-              </button>
+                <option value="">Selecione…</option>
+                {TYPE_OPTIONS.map(t => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Prazo final
+              </label>
+              <input
+                type="date"
+                name="deadline"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.deadline}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-1">
+                Gestor (people)
+              </label>
+              <select
+                name="managerId"
+                className="w-full border rounded-lg px-3 py-2"
+                value={formData.managerId}
+                onChange={handleChange}
+              >
+                <option value="">Selecione…</option>
+                {people.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
+            >
+              {editing ? 'Salvar alterações' : 'Criar projeto'}
+            </button>
+            {editing && (
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
-                className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600"
+                className="px-4 py-2 rounded-lg border"
+                onClick={() => {
+                  resetForm()
+                  setShowForm(false)
+                }}
               >
-                Cancelar
+                Cancelar edição
               </button>
-            </div>
-          </form>
-        </div>
+            )}
+          </div>
+        </form>
       )}
 
-      {/* Lista de Projetos */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full text-sm">
+      {/* Lista simples de projetos */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full border">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('code')} title="Ordenar por código">
-                  <span className="uppercase">Código</span>
-                  <span>{arrow('code')}</span>
-                </button>
-              </th>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('name')} title="Ordenar por projeto">
-                  <span className="uppercase">Projeto</span>
-                  <span>{arrow('name')}</span>
-                </button>
-              </th>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('client_name')} title="Ordenar por cliente">
-                  <span className="uppercase">Cliente</span>
-                  <span>{arrow('client_name')}</span>
-                </button>
-              </th>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('budget_hours')} title="Ordenar por horas">
-                  <span className="uppercase">Horas</span>
-                  <span>{arrow('budget_hours')}</span>
-                </button>
-              </th>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('budget_value')} title="Ordenar por valor">
-                  <span className="uppercase">Valor</span>
-                  <span>{arrow('budget_value')}</span>
-                </button>
-              </th>
-              <th className="px-4 py-2 text-gray-500">
-                <button className={headerBtn} onClick={() => toggleSort('status')} title="Ordenar por status">
-                  <span className="uppercase">Status</span>
-                  <span>{arrow('status')}</span>
-                </button>
-              </th>
+              <th className="text-left p-2 border">Código</th>
+              <th className="text-left p-2 border">Nome</th>
+              <th className="text-left p-2 border">Cliente</th>
+              <th className="text-left p-2 border">Tipo</th>
+              <th className="text-left p-2 border">Prazo</th>
+              <th className="text-left p-2 border">Gestor</th>
+              <th className="text-left p-2 border">Ações</th>
             </tr>
           </thead>
-
-          <tbody className="divide-y divide-gray-200">
-            {sortedProjects.map((project) => (
-              <tr key={project.id} className="hover:bg-gray-50">
-                <td className="px-4 py-1.5 font-mono text-gray-900">{project.code}</td>
-                <td className="px-4 py-1.5 font-medium text-gray-900">{project.name}</td>
-                <td className="px-4 py-1.5 text-gray-500">{project.client_name || '-'}</td>
-                <td className="px-4 py-1.5 text-gray-500">
-                  {typeof project.budget_hours === 'number' ? `${project.budget_hours}h` : '-'}
+          <tbody>
+            {projects.map(p => (
+              <tr key={p.id} className="border-t">
+                <td className="p-2 border">{p.code}</td>
+                <td className="p-2 border">{p.name}</td>
+                <td className="p-2 border">{p.client_name ?? '—'}</td>
+                <td className="p-2 border">{p.project_type ?? '—'}</td>
+                <td className="p-2 border">{toDateInputValue(p.deadline) || '—'}</td>
+                <td className="p-2 border">
+                  {/* mostra apenas o id; se quiser o nome, faça join via RPC ou
+                      traga o gestor na lista com uma lookup local */}
+                  {p.manager_id ?? '—'}
                 </td>
-                <td className="px-4 py-1.5 text-gray-500">
-                  {typeof project.budget_value === 'number'
-                    ? `R$ ${project.budget_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : '-'}
-                </td>
-                <td className="px-4 py-1.5">
-                  <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                    {project.status}
-                  </span>
+                <td className="p-2 border">
+                  <button
+                    className="text-sm underline"
+                    onClick={() => handleEdit(p)}
+                  >
+                    Editar
+                  </button>
                 </td>
               </tr>
             ))}
-            {sortedProjects.length === 0 && (
+            {projects.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-3 text-center text-gray-500">
-                  Nenhum projeto cadastrado ainda
+                <td className="p-4 text-center" colSpan={7}>
+                  Nenhum projeto cadastrado.
                 </td>
               </tr>
             )}
