@@ -49,6 +49,42 @@ export default function TimelinePage() {
   const [draggingProject, setDraggingProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // === Menu contextual ===
+  type CtxMenu = {
+    show: boolean
+    x: number
+    y: number
+    personId?: string
+    dateISO?: string // se quiser usar depois
+  }
+
+  const [ctxMenu, setCtxMenu] = useState<CtxMenu>({ show: false, x: 0, y: 0 })
+  const closeCtxMenu = () => setCtxMenu(m => ({ ...m, show: false }))
+
+  // abre o menu em uma célula específica
+  const openCtxMenu = (e: React.MouseEvent, personId: string, dateISO: string) => {
+    e.preventDefault()
+    setCtxMenu({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      personId,
+      dateISO,
+    })
+  }
+
+  // fecha com clique fora ou ESC
+  useEffect(() => {
+    const onClick = () => closeCtxMenu()
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeCtxMenu() }
+    window.addEventListener('click', onClick)
+    window.addEventListener('keydown', onEsc)
+    return () => {
+      window.removeEventListener('click', onClick)
+      window.removeEventListener('keydown', onEsc)
+    }
+  }, [])
+
   // Buscar projetos, pessoas e assignments
   useEffect(() => {
     loadAllData()
@@ -246,6 +282,66 @@ export default function TimelinePage() {
     // Sincroniza com o Supabase em background
     saveAssignments(updatedAssignments)
   }
+    // cria/atualiza alocação para a semana toda (seg-sex por padrão)
+    const allocateWeekForPerson = async (
+      personId: string,
+      { hours = 8, weekdaysOnly = true }: { hours?: number; weekdaysOnly?: boolean } = {}
+    ) => {
+      if (!draggingProject) {
+        alert('Arraste um projeto primeiro, depois use o menu com botão direito.')
+        return
+      }
+
+      const newAssignments = [...assignments]
+
+      currentWeek.forEach((d) => {
+        const dow = d.getDay() // 0 dom ... 6 sáb
+        if (!weekdaysOnly || (dow >= 1 && dow <= 5)) {
+          const ds = d.toISOString().split('T')[0]
+          const idx = newAssignments.findIndex(
+            a => a.person_id === personId && a.project_id === draggingProject && a.date === ds
+          )
+          if (idx >= 0) {
+            newAssignments[idx].hours = hours
+          } else {
+            newAssignments.push({
+              id: Math.random().toString(36),
+              person_id: personId,
+              project_id: draggingProject,
+              date: ds,
+              hours,
+            })
+          }
+        }
+      })
+
+      await saveAssignments(newAssignments)
+      closeCtxMenu()
+    }
+
+    // limpa alocações da pessoa + projeto arrastado na semana
+    const clearWeekForPersonProject = async (personId: string) => {
+      if (!draggingProject) {
+        alert('Arraste um projeto primeiro para limpar somente esse projeto.')
+        return
+      }
+      const weekISO = currentWeek.map(d => d.toISOString().split('T')[0])
+      const updated = assignments.filter(
+        a => !(a.person_id === personId && a.project_id === draggingProject && weekISO.includes(a.date))
+      )
+      await saveAssignments(updated)
+      closeCtxMenu()
+    }
+
+    // limpa TODAS as alocações da pessoa na semana
+    const clearWeekForPersonAll = async (personId: string) => {
+      const weekISO = currentWeek.map(d => d.toISOString().split('T')[0])
+      const updated = assignments.filter(
+        a => !(a.person_id === personId && weekISO.includes(a.date))
+      )
+      await saveAssignments(updated)
+      closeCtxMenu()
+    }
 
   // Remover alocação
   const removeAssignment = async (assignmentId: string) => {
@@ -421,6 +517,7 @@ export default function TimelinePage() {
                         e.dataTransfer.dropEffect = 'copy'
                       }}
                       onDrop={() => handleDrop(person.id, dateString)}
+                      onContextMenu={(e) => openCtxMenu(e, person.id, dateString)}
                     >
                       <div className={`p-2 rounded border-2 border-dashed min-h-10 transition-colors duration-500 ${
                         warning ? 'bg-red-100 border-red-300' : 'bg-gray-60 border-gray-300'
@@ -490,6 +587,72 @@ export default function TimelinePage() {
           <li>• <strong>Dados salvos automaticamente</strong> no banco de dados</li>
         </ul>
       </div>
-    </div>
+
+      {/* === MENU CONTEXTUAL === */}
+      {ctxMenu.show && (
+        <div
+          className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg w-64"
+          style={{ top: ctxMenu.y + 4, left: ctxMenu.x + 4 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-2 text-xs text-gray-500 border-b">
+            Ações para: <span className="font-medium text-gray-700">
+              {people.find(p => p.id === ctxMenu.personId)?.full_name}
+            </span>
+          </div>
+
+          <button
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+              draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={() =>
+              draggingProject &&
+              ctxMenu.personId &&
+              allocateWeekForPerson(ctxMenu.personId, { hours: 8, weekdaysOnly: true })
+            }
+          >
+            Alocar <b>8h (seg–sex)</b> para o projeto arrastado
+          </button>
+
+          <button
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+              draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={() =>
+              draggingProject &&
+              ctxMenu.personId &&
+              allocateWeekForPerson(ctxMenu.personId, { hours: 8, weekdaysOnly: false })
+            }
+          >
+            Alocar <b>8h (dom–sáb)</b> para o projeto arrastado
+          </button>
+
+          <div className="my-1 border-t" />
+
+          <button
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+              draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={() =>
+              draggingProject &&
+              ctxMenu.personId &&
+              clearWeekForPersonProject(ctxMenu.personId)
+            }
+          >
+            Limpar semana (apenas este projeto arrastado)
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 text-red-700"
+            onClick={() =>
+              ctxMenu.personId && clearWeekForPersonAll(ctxMenu.personId)
+            }
+          >
+            Limpar semana (todas as alocações da pessoa)
+          </button>
+        </div>
+      )}
+    </div>  // ← esse é o fechamento do container principal
+
   )
 }
