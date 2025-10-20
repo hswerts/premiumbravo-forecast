@@ -210,10 +210,15 @@ export default function ProjectsPage() {
       await loadProjects()
       resetForm()
       setShowForm(false)
-    } catch (err: any) {
-      console.error(err)
-      alert('Erro ao salvar o projeto. Verifique as permissões/RLS.')
-    } finally {
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error(err.message);
+          alert(`Erro ao salvar o projeto: ${err.message}`);
+        } else {
+          console.error(err);
+          alert('Erro ao salvar o projeto. Verifique as permissões/RLS.');
+        }
+          } finally {
       setLoading(false)
     }
   }
