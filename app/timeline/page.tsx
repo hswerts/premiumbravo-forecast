@@ -355,9 +355,9 @@ export default function TimelinePage() {
         <table className="w-full table-fixed">
           {/* Larguras fixas: 1ª coluna (pessoa) + colunas/dia iguais */}
           <colgroup>
-            <col style={{ width: '16rem' }} /> {/* Pessoa */}
+            <col style={{ width: '11rem' }} /> {/* Pessoa */}
             {currentWeek.map((_, i) => (
-              <col key={i} style={{ width: '11rem' }} />
+              <col key={i} style={{ width: '13rem' }} />
             ))}
           </colgroup>
 
