@@ -433,7 +433,7 @@ export default function TimelinePage() {
                             return (
                               <div
                                 key={assignment.id}
-                                className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-sm"
+                                className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-0.5 text-xs"
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   <span className="font-medium text-xs truncate min-w-0 flex-1"
