@@ -439,14 +439,16 @@ export default function TimesheetPage() {
                           </div>
 
                           {day.status === 'pending' ? (
-                            <div className="flex gap-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-600 text-sm" title="Pendente de confirmação">⚠️</span>
+                              <span className="text-xs text-gray-600">{day.planned}h</span>
                               <input
                                 type="number"
                                 min={0}
                                 max={24}
                                 step={0.5}
                                 placeholder="Real"
-                                className="w-16 text-xs border rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-12 text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 disabled={!editable}
                                 onChange={(e) => {
                                   const val = parseFloat(e.target.value)
@@ -456,7 +458,7 @@ export default function TimesheetPage() {
                                 }}
                               />
                               <button
-                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+                                className="text-xs bg-green-600 text-white px-1.5 py-0.5 rounded hover:bg-green-700 disabled:opacity-50"
                                 disabled={!editable}
                                 onClick={() => confirmDay(row.project.id, day.dateISO, day.planned, day.timesheetId)}
                                 title="Confirmar horas planejadas"
