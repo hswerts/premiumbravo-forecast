@@ -56,6 +56,7 @@ export default function TimesheetPage() {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
   const [currentWeek, setCurrentWeek] = useState<Date[]>([])
   const [timesheetRows, setTimesheetRows] = useState<TimesheetRow[]>([])
+  const [selectedExtraProject, setSelectedExtraProject] = useState<string>('')
 
   // Simular usuário logado (substitua pela lógica real de autenticação)
   useEffect(() => {
@@ -342,12 +343,38 @@ export default function TimesheetPage() {
     await updateTimesheet(projectId, dateISO, plannedHours, plannedHours, timesheetId)
   }
 
+  const addExtraProjectHours = async (dateISO: string, hours: number) => {
+    if (!selectedExtraProject) {
+      alert('Selecione um projeto primeiro')
+      return
+    }
+
+    await updateTimesheet(selectedExtraProject, dateISO, hours, 0)
+  }
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pt-BR', { 
       day: '2-digit', 
       month: '2-digit',
       weekday: 'short'
     })
+  }
+
+  // Calcular totais por dia
+  const calculateDayTotals = () => {
+    const totals = currentWeek.map((_, dayIndex) => {
+      let total = 0
+      timesheetRows.forEach(row => {
+        const day = row.days[dayIndex]
+        if (day.actual !== null) {
+          total += day.actual
+        } else if (day.planned > 0) {
+          total += day.planned
+        }
+      })
+      return total
+    })
+    return totals
   }
 
   if (!currentUser) {
@@ -359,6 +386,8 @@ export default function TimesheetPage() {
       </div>
     )
   }
+
+  const dayTotals = calculateDayTotals()
 
   return (
     <div className="p-6 space-y-4">
@@ -416,8 +445,8 @@ export default function TimesheetPage() {
           </colgroup>
 
           <thead>
-            <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 bg-gray-50 border-b">
+            <tr className="bg-gray-100">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 border-b">
                 Projeto
               </th>
               {currentWeek.map((date, index) => {
@@ -434,7 +463,7 @@ export default function TimesheetPage() {
                         ? 'bg-blue-100 text-blue-800 font-bold'
                         : isWeekendDay
                         ? 'bg-gray-200 text-gray-600'
-                        : 'bg-gray-50 text-gray-700'
+                        : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     {formatDate(date)}
@@ -551,6 +580,91 @@ export default function TimesheetPage() {
                 })}
               </tr>
             ))}
+
+            {/* Linha para projetos extras */}
+            <tr className="bg-blue-50 border-t border-blue-200">
+              <td className="px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-blue-800">Projeto Extra:</span>
+                  <select
+                    value={selectedExtraProject}
+                    onChange={(e) => setSelectedExtraProject(e.target.value)}
+                    className="text-sm border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione um projeto</option>
+                    {projects
+                      .filter(project => !timesheetRows.some(row => row.project.id === project.id))
+                      .map(project => (
+                        <option key={project.id} value={project.id}>
+                          {project.code}: {project.name}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+              </td>
+              {currentWeek.map((date, dayIndex) => {
+                const dateISO = date.toISOString().split('T')[0]
+                const editable = checkCanEditDate(dateISO)
+                
+                return (
+                  <td key={dayIndex} className="px-2 py-2 border-l border-gray-200">
+                    <div className="p-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        max={24}
+                        step={0.5}
+                        placeholder="Horas"
+                        className="w-full text-xs border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={!editable || !selectedExtraProject}
+                        onBlur={(e) => {
+                          const val = parseFloat(e.target.value)
+                          if (!isNaN(val) && val > 0) {
+                            void addExtraProjectHours(dateISO, val)
+                            e.target.value = ''
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseFloat(e.currentTarget.value)
+                            if (!isNaN(val) && val > 0) {
+                              void addExtraProjectHours(dateISO, val)
+                              e.currentTarget.value = ''
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </td>
+                )
+              })}
+            </tr>
+
+            {/* Linha de totais */}
+            <tr className="bg-gray-800 border-t border-gray-600">
+              <td className="px-3 py-2">
+                <div className="text-sm font-bold text-white">Total do Dia</div>
+              </td>
+              {dayTotals.map((total, index) => {
+                const dateObj = currentWeek[index]
+                const isWeekendDay = dateObj.getDay() === 0 || dateObj.getDay() === 6
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const isToday = dateObj.getTime() === today.getTime()
+                
+                return (
+                  <td key={index} className="px-2 py-2 border-l border-gray-600 text-center">
+                    <div className={`font-bold text-sm ${
+                      isToday ? 'text-yellow-300' : 
+                      isWeekendDay ? 'text-gray-300' : 'text-white'
+                    }`}>
+                      {total}h
+                    </div>
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -563,6 +677,8 @@ export default function TimesheetPage() {
           <li>• <strong>Verde:</strong> Horas confirmadas</li>
           <li>• <strong>Botão ✓:</strong> Confirmar as horas planejadas</li>
           <li>• <strong>Campo &quot;Real&quot;:</strong> Digitar horas diferentes do planejado</li>
+          <li>• <strong>Linha Azul:</strong> Adicionar horas em projetos não programados</li>
+          <li>• <strong>Linha Cinza Escuro:</strong> Total de horas por dia</li>
           <li>• <strong>Você pode editar timesheets de até 4 semanas atrás</strong></li>
         </ul>
       </div>
