@@ -56,12 +56,11 @@ export default function TimesheetPage() {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
   const [currentWeek, setCurrentWeek] = useState<Date[]>([])
   const [timesheetRows, setTimesheetRows] = useState<TimesheetRow[]>([])
-  const [loading, setLoading] = useState(false)
 
   // Simular usuário logado (substitua pela lógica real de autenticação)
-  // Por enquanto vou buscar pelo nome "Herculano Swerts" como teste
   useEffect(() => {
     loadCurrentUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadCurrentUser = async () => {
@@ -79,27 +78,6 @@ export default function TimesheetPage() {
       console.error('Erro ao carregar usuário:', error)
       alert('Erro ao identificar usuário. Faça login novamente.')
     }
-  }
-
-  useEffect(() => {
-    if (currentUser) {
-      generateWeek()
-      loadAllData()
-    }
-  }, [currentUser])
-
-  useEffect(() => {
-    if (currentUser && projects.length > 0 && currentWeek.length > 0) {
-      buildTimesheetRows()
-    }
-  }, [currentUser, projects, assignments, timesheets, currentWeek])
-
-  const loadAllData = async () => {
-    await Promise.all([
-      loadProjects(),
-      loadAssignments(),
-      loadTimesheets()
-    ])
   }
 
   const loadProjects = async () => {
@@ -149,6 +127,107 @@ export default function TimesheetPage() {
     }
   }
 
+  const loadAllData = async () => {
+    await Promise.all([
+      loadProjects(),
+      loadAssignments(),
+      loadTimesheets()
+    ])
+  }
+
+  const buildTimesheetRows = () => {
+    if (!currentUser) return
+
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const twoWeeksAgo = new Date(now)
+    twoWeeksAgo.setDate(now.getDate() - 14)
+
+    const projectMap = new Map<string, TimesheetRow>()
+
+    // Processar assignments
+    assignments.forEach(assignment => {
+      const assignDate = new Date(assignment.date)
+      if (assignDate < twoWeeksAgo) return
+
+      const proj = projects.find(p => p.id === assignment.project_id)
+      if (!proj) return
+
+      if (!projectMap.has(proj.id)) {
+        projectMap.set(proj.id, {
+          project: proj,
+          days: currentWeek.map(d => ({
+            date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' }),
+            dateISO: d.toISOString().split('T')[0],
+            planned: 0,
+            actual: null,
+            status: 'pending' as const,
+            notes: null,
+          }))
+        })
+      }
+
+      const row = projectMap.get(proj.id)!
+      const dayIndex = currentWeek.findIndex(d => d.toISOString().split('T')[0] === assignment.date)
+      
+      if (dayIndex >= 0) {
+        row.days[dayIndex].planned = assignment.hours
+      }
+    })
+
+    // Sobrescrever com dados reais do timesheet
+    timesheets.forEach(ts => {
+      const proj = projects.find(p => p.id === ts.project_id)
+      if (!proj) return
+
+      if (!projectMap.has(proj.id)) {
+        projectMap.set(proj.id, {
+          project: proj,
+          days: currentWeek.map(d => ({
+            date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' }),
+            dateISO: d.toISOString().split('T')[0],
+            planned: 0,
+            actual: null,
+            status: 'pending' as const,
+            notes: null,
+          }))
+        })
+      }
+
+      const row = projectMap.get(proj.id)!
+      const dayIndex = currentWeek.findIndex(d => d.toISOString().split('T')[0] === ts.date)
+      
+      if (dayIndex >= 0) {
+        row.days[dayIndex].planned = ts.planned_hours
+        row.days[dayIndex].actual = ts.actual_hours
+        row.days[dayIndex].status = ts.status
+        row.days[dayIndex].notes = ts.notes
+        row.days[dayIndex].timesheetId = ts.id
+      }
+    })
+
+    const rows = Array.from(projectMap.values()).filter(row => 
+      row.days.some(day => day.planned > 0 || day.actual !== null)
+    )
+
+    setTimesheetRows(rows)
+  }
+
+  useEffect(() => {
+    if (currentUser) {
+      generateWeek()
+      loadAllData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser])
+
+  useEffect(() => {
+    if (currentUser && projects.length > 0 && currentWeek.length > 0) {
+      buildTimesheetRows()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, projects, assignments, timesheets, currentWeek])
+
   const generateWeek = (offset: number = 0) => {
     const base = new Date()
     base.setHours(0, 0, 0, 0)
@@ -176,94 +255,14 @@ export default function TimesheetPage() {
     generateWeek(offset)
   }
 
-  const buildTimesheetRows = () => {
-    if (!currentUser) return
-
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const twoWeeksAgo = new Date(today)
-    twoWeeksAgo.setDate(today.getDate() - 14)
-
-    // Agrupar assignments e timesheets por projeto
-    const projectMap = new Map<string, TimesheetRow>()
-
-    // Processar assignments (alocações do Timeline)
-    assignments.forEach(assignment => {
-      const assignDate = new Date(assignment.date)
-      if (assignDate < twoWeeksAgo) return // Ignorar assignments muito antigos
-
-      const project = projects.find(p => p.id === assignment.project_id)
-      if (!project) return
-
-      if (!projectMap.has(project.id)) {
-        projectMap.set(project.id, {
-          project,
-          days: currentWeek.map(d => ({
-            date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' }),
-            dateISO: d.toISOString().split('T')[0],
-            planned: 0,
-            actual: null,
-            status: 'pending' as const,
-            notes: null,
-          }))
-        })
-      }
-
-      const row = projectMap.get(project.id)!
-      const dayIndex = currentWeek.findIndex(d => d.toISOString().split('T')[0] === assignment.date)
-      
-      if (dayIndex >= 0) {
-        row.days[dayIndex].planned = assignment.hours
-      }
-    })
-
-    // Sobrescrever com dados reais do timesheet
-    timesheets.forEach(ts => {
-      const project = projects.find(p => p.id === ts.project_id)
-      if (!project) return
-
-      if (!projectMap.has(project.id)) {
-        projectMap.set(project.id, {
-          project,
-          days: currentWeek.map(d => ({
-            date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' }),
-            dateISO: d.toISOString().split('T')[0],
-            planned: 0,
-            actual: null,
-            status: 'pending' as const,
-            notes: null,
-          }))
-        })
-      }
-
-      const row = projectMap.get(project.id)!
-      const dayIndex = currentWeek.findIndex(d => d.toISOString().split('T')[0] === ts.date)
-      
-      if (dayIndex >= 0) {
-        row.days[dayIndex].planned = ts.planned_hours
-        row.days[dayIndex].actual = ts.actual_hours
-        row.days[dayIndex].status = ts.status
-        row.days[dayIndex].notes = ts.notes
-        row.days[dayIndex].timesheetId = ts.id
-      }
-    })
-
-    // Converter para array e filtrar projetos sem nenhuma alocação na semana
-    const rows = Array.from(projectMap.values()).filter(row => 
-      row.days.some(day => day.planned > 0 || day.actual !== null)
-    )
-
-    setTimesheetRows(rows)
-  }
-
-  const canEditDate = (dateISO: string): boolean => {
+  const checkCanEditDate = (dateISO: string): boolean => {
     const date = new Date(dateISO)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const twoWeeksAgo = new Date(today)
-    twoWeeksAgo.setDate(today.getDate() - 14)
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const twoWeeksAgo = new Date(now)
+    twoWeeksAgo.setDate(now.getDate() - 14)
 
-    return date >= twoWeeksAgo && date <= today
+    return date >= twoWeeksAgo && date <= now
   }
 
   const updateTimesheet = async (
@@ -274,12 +273,11 @@ export default function TimesheetPage() {
     timesheetId?: string
   ) => {
     if (!currentUser) return
-    if (!canEditDate(dateISO)) {
+    if (!checkCanEditDate(dateISO)) {
       alert('Você só pode editar timesheets de até 2 semanas atrás.')
       return
     }
 
-    setLoading(true)
     try {
       const payload = {
         person_id: currentUser.id,
@@ -287,11 +285,10 @@ export default function TimesheetPage() {
         date: dateISO,
         planned_hours: plannedHours,
         actual_hours: actualHours,
-        status: actualHours !== null ? 'confirmed' : 'pending',
+        status: actualHours !== null ? 'confirmed' as const : 'pending' as const,
       }
 
       if (timesheetId) {
-        // Atualizar existente
         const { error } = await supabase
           .from('timesheets')
           .update(payload)
@@ -299,7 +296,6 @@ export default function TimesheetPage() {
 
         if (error) throw error
       } else {
-        // Criar novo
         const { error } = await supabase
           .from('timesheets')
           .insert([payload])
@@ -311,8 +307,6 @@ export default function TimesheetPage() {
     } catch (error) {
       console.error('Erro ao salvar timesheet:', error)
       alert('Erro ao salvar. Tente novamente.')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -421,7 +415,7 @@ export default function TimesheetPage() {
                 </td>
 
                 {row.days.map((day, dayIndex) => {
-                  const editable = canEditDate(day.dateISO)
+                  const editable = checkCanEditDate(day.dateISO)
                   const hasDifference = day.actual !== null && day.actual !== day.planned
                   
                   return (
@@ -515,7 +509,7 @@ export default function TimesheetPage() {
           <li>• <strong>Amarelo:</strong> Horas aguardando confirmação</li>
           <li>• <strong>Verde:</strong> Horas confirmadas</li>
           <li>• <strong>Botão ✓:</strong> Confirmar as horas planejadas</li>
-          <li>• <strong>Campo "Real":</strong> Digitar horas diferentes do planejado</li>
+          <li>• <strong>Campo &quot;Real&quot;:</strong> Digitar horas diferentes do planejado</li>
           <li>• <strong>Você pode editar timesheets de até 2 semanas atrás</strong></li>
         </ul>
       </div>
