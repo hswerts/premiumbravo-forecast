@@ -231,19 +231,19 @@ export default function TimesheetPage() {
   const generateWeek = (offset: number = 0) => {
     const base = new Date()
     base.setHours(0, 0, 0, 0)
-    base.setDate(base.getDate() + offset * 7)
+    base.setDate(base.getDate() + offset)
 
-    const sunday = new Date(base)
-    const dow = sunday.getDay()
-    sunday.setDate(sunday.getDate() - dow)
+    // Gerar 12 dias: hoje -9 até hoje +2
+    const startDay = new Date(base)
+    startDay.setDate(base.getDate() - 9)
 
-    const week: Date[] = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(sunday)
-      d.setDate(sunday.getDate() + i)
+    const days: Date[] = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(startDay)
+      d.setDate(startDay.getDate() + i)
       return d
     })
 
-    setCurrentWeek(week)
+    setCurrentWeek(days)
   }
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -251,15 +251,21 @@ export default function TimesheetPage() {
     if (!firstDay) return
     
     const newFirstDay = new Date(firstDay)
-    newFirstDay.setDate(firstDay.getDate() + (direction === 'next' ? 7 : -7))
+    // Mover 1 dia de cada vez
+    newFirstDay.setDate(firstDay.getDate() + (direction === 'next' ? 1 : -1))
     
     // Calcular offset baseado na diferença para hoje
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const diffTime = newFirstDay.getTime() - today.getTime()
-    const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000))
+    const diffDays = Math.round(diffTime / (24 * 60 * 60 * 1000))
     
-    generateWeek(diffWeeks)
+    // O offset é a diferença em dias + 9 (porque começamos 9 dias atrás)
+    generateWeek(diffDays + 9)
+  }
+
+  const goToToday = () => {
+    generateWeek(0)
   }
 
   const checkCanEditDate = (dateISO: string): boolean => {
@@ -281,7 +287,7 @@ export default function TimesheetPage() {
   ) => {
     if (!currentUser) return
     if (!checkCanEditDate(dateISO)) {
-      alert('Você só pode editar timesheets de até 2 semanas atrás.')
+      alert('Você só pode editar timesheets de até 4 semanas atrás.')
       return
     }
 
@@ -295,25 +301,36 @@ export default function TimesheetPage() {
         status: actualHours !== null ? 'confirmed' as const : 'pending' as const,
       }
 
+      console.log('💾 Salvando timesheet:', payload)
+
       if (timesheetId) {
         const { error } = await supabase
           .from('timesheets')
           .update(payload)
           .eq('id', timesheetId)
 
-        if (error) throw error
+        if (error) {
+          console.error('❌ Erro ao atualizar:', error)
+          throw error
+        }
+        console.log('✅ Timesheet atualizado com sucesso')
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('timesheets')
           .insert([payload])
+          .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('❌ Erro ao inserir:', error)
+          throw error
+        }
+        console.log('✅ Timesheet criado com sucesso:', data)
       }
 
       await loadTimesheets()
-    } catch (error) {
-      console.error('Erro ao salvar timesheet:', error)
-      alert('Erro ao salvar. Tente novamente.')
+    } catch (error: any) {
+      console.error('💥 Erro geral ao salvar timesheet:', error)
+      alert(`Erro ao salvar: ${error.message || 'Tente novamente.'}`)
     }
   }
 
@@ -349,15 +366,24 @@ export default function TimesheetPage() {
         <div className="flex gap-2">
           <button
             onClick={() => navigateWeek('prev')}
-            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+            className="bg-gray-500 text-white px-3 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+            title="Dia anterior"
           >
-            ← Semana Anterior
+            ← Anterior
+          </button>
+          <button
+            onClick={goToToday}
+            className="bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md hover:bg-blue-700 transition-colors"
+            title="Voltar para hoje"
+          >
+            Hoje
           </button>
           <button
             onClick={() => navigateWeek('next')}
-            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+            className="bg-gray-500 text-white px-3 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+            title="Próximo dia"
           >
-            Próxima Semana →
+            Próximo →
           </button>
         </div>
       </div>
@@ -369,12 +395,16 @@ export default function TimesheetPage() {
             <col style={{ width: '16rem' }} />
             {currentWeek.map((date, i) => {
               const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const isToday = date.getTime() === today.getTime()
+              
               return (
                 <col
                   key={i}
                   style={{
-                    width: isWeekendDay ? '8rem' : '11rem',
-                    backgroundColor: isWeekendDay ? '#f5f5f5' : undefined,
+                    width: '9rem',
+                    backgroundColor: isToday ? '#e0f2fe' : isWeekendDay ? '#f5f5f5' : undefined,
                   }}
                 />
               )
@@ -388,16 +418,23 @@ export default function TimesheetPage() {
               </th>
               {currentWeek.map((date, index) => {
                 const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const isToday = date.getTime() === today.getTime()
+                
                 return (
                   <th
                     key={index}
-                    className={`px-3 py-2 text-center text-xs font-medium border-b ${
-                      isWeekendDay
+                    className={`px-2 py-2 text-center text-xs font-medium border-b ${
+                      isToday
+                        ? 'bg-blue-100 text-blue-800 font-bold'
+                        : isWeekendDay
                         ? 'bg-gray-100 text-gray-500'
                         : 'bg-gray-50 text-gray-700'
                     }`}
                   >
                     {formatDate(date)}
+                    {isToday && <div className="text-[10px] text-blue-600">HOJE</div>}
                   </th>
                 )
               })}
@@ -407,8 +444,8 @@ export default function TimesheetPage() {
           <tbody className="divide-y divide-gray-200">
             {timesheetRows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-500">
-                  Nenhuma alocação encontrada para esta semana.
+                <td colSpan={13} className="px-3 py-8 text-center text-sm text-gray-500">
+                  Nenhuma alocação encontrada para este período.
                 </td>
               </tr>
             )}
@@ -520,7 +557,7 @@ export default function TimesheetPage() {
           <li>• <strong>Verde:</strong> Horas confirmadas</li>
           <li>• <strong>Botão ✓:</strong> Confirmar as horas planejadas</li>
           <li>• <strong>Campo &quot;Real&quot;:</strong> Digitar horas diferentes do planejado</li>
-          <li>• <strong>Você pode editar timesheets de até 2 semanas atrás</strong></li>
+          <li>• <strong>Você pode editar timesheets de até 4 semanas atrás</strong></li>
         </ul>
       </div>
     </div>
