@@ -72,6 +72,14 @@ export default function RootLayout({
                       Timeline
                     </Link>
                     <Link
+                      href="/timesheet"
+                      className={`px-3 py-2 rounded-md text-sm font-medium ${
+                        pathname === '/timesheet' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
+                      }`}
+                    >
+                      Timesheet
+                    </Link>
+                    <Link
                       href="/reports"
                       className={`px-3 py-2 rounded-md text-sm font-medium ${
                         pathname === '/reports' ? 'bg-premiumbravo-dark' : 'hover:opacity-80'
