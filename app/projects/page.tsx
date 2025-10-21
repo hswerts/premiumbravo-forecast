@@ -13,16 +13,15 @@ type ProjectType =
 
 interface Project {
   id: string;
-  code: string;              // ex.: "1234"
-  name: string;              // nome do projeto
+  code: string;
+  name: string;
   client_name?: string | null;
   budget_hours?: number | null;
   budget_value?: number | null;
   status: string;
-  // novos:
   project_type?: ProjectType | null;
-  deadline?: string | null;  // 'YYYY-MM-DD'
-  manager_id?: string | null;
+  deadline?: string | null;   // YYYY-MM-DD
+  manager_id?: string | null; // FK -> people.id
 }
 
 interface Person {
@@ -53,7 +52,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [showForm, setShowForm] = useState<boolean>(true); // deixe true para exibir o card de cadastro
+  const [showForm, setShowForm] = useState<boolean>(true);
   const [editing, setEditing] = useState<Project | null>(null);
 
   const [form, setForm] = useState({
@@ -62,14 +61,13 @@ export default function ProjectsPage() {
     clientName: '',
     budgetHours: '',
     budgetValue: '',
-    status: 'Ativo',
-    // novos:
+    status: 'planned',
     projectType: '' as '' | ProjectType,
     deadline: '',
     managerId: '',
   });
 
-  // ---------- LOADERS ----------
+  // ------ LOADERS ------
   const loadProjects = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -79,7 +77,7 @@ export default function ProjectsPage() {
 
       if (error) throw error;
       setProjects((data ?? []) as Project[]);
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         console.error('Erro ao carregar projects:', err.message);
         alert(`Erro ao carregar projects: ${err.message}`);
@@ -99,12 +97,8 @@ export default function ProjectsPage() {
 
       if (error) throw error;
       setPeople((data ?? []) as Person[]);
-    } catch (err) {
-      if (err instanceof Error) {
-        console.error('Erro ao carregar people:', err.message);
-      } else {
-        console.error('Erro ao carregar people:', err);
-      }
+    } catch (err: unknown) {
+      console.error('Erro ao carregar people:', err);
     }
   }, []);
 
@@ -113,12 +107,12 @@ export default function ProjectsPage() {
     void loadPeople();
   }, [loadProjects, loadPeople]);
 
-  // ---------- HELPERS ----------
   const peopleDict = useMemo(
     () => Object.fromEntries(people.map(p => [p.id, p.full_name])),
     [people]
   );
 
+  // ------ HELPERS ------
   const resetForm = () => {
     setEditing(null);
     setForm({
@@ -127,7 +121,7 @@ export default function ProjectsPage() {
       clientName: '',
       budgetHours: '',
       budgetValue: '',
-      status: 'Ativo',
+      status: 'planned',
       projectType: '',
       deadline: '',
       managerId: '',
@@ -150,7 +144,7 @@ export default function ProjectsPage() {
       clientName: p.client_name ?? '',
       budgetHours: p.budget_hours != null ? String(p.budget_hours) : '',
       budgetValue: p.budget_value != null ? String(p.budget_value) : '',
-      status: p.status ?? 'Ativo',
+      status: p.status ?? 'planned',
       projectType: (p.project_type ?? '') as '' | ProjectType,
       deadline: toDateInputValue(p.deadline),
       managerId: p.manager_id ?? '',
@@ -158,7 +152,7 @@ export default function ProjectsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ---------- SUBMIT ----------
+  // ------ SUBMIT ------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) {
@@ -190,10 +184,9 @@ export default function ProjectsPage() {
       client_name: form.clientName.trim() || null,
       budget_hours,
       budget_value,
-      status: form.status.trim() || 'Ativo',
-      // novos mapeados ao banco:
+      status: form.status.trim() || 'planned',
       project_type: form.projectType || null,
-      deadline: form.deadline || null,      // 'YYYY-MM-DD'
+      deadline: form.deadline || null,      // YYYY-MM-DD
       manager_id: form.managerId || null,
     };
 
@@ -214,8 +207,8 @@ export default function ProjectsPage() {
       }
       await loadProjects();
       resetForm();
-      setShowForm(true); // mantenha aberto para novos cadastros
-    } catch (err) {
+      setShowForm(true);
+    } catch (err: unknown) {
       if (err instanceof Error) {
         console.error('Erro ao salvar projeto:', err.message);
         alert(`Erro ao salvar projeto: ${err.message}`);
@@ -231,7 +224,9 @@ export default function ProjectsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Projetos PremiumBravo</h1>
+        <h1 className="text-2xl font-semibold">
+          Projetos PremiumBravo <small className="ml-2 text-xs text-gray-500">v2</small>
+        </h1>
         <button
           className="px-4 py-2 rounded-lg bg-blue-600 text-white"
           onClick={() => {
@@ -332,14 +327,13 @@ export default function ProjectsPage() {
                   type="text"
                   name="status"
                   className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Ex: Ativo, Pausado, Encerrado"
+                  placeholder="Ex: planned / active / paused / closed"
                   value={form.status}
                   onChange={handleChange}
                 />
               </div>
 
-              {/* ===== NOVOS CAMPOS ===== */}
-
+              {/* NOVOS CAMPOS */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Tipo do Projeto
@@ -420,7 +414,7 @@ export default function ProjectsPage() {
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-3">CÓDIGO ↕</th>
+              <th className="text-left p-3">CÓDIGO</th>
               <th className="text-left p-3">PROJETO</th>
               <th className="text-left p-3">CLIENTE</th>
               <th className="text-right p-3">HORAS</th>
