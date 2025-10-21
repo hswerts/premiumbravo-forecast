@@ -345,26 +345,22 @@ export default function TimesheetPage() {
     if (!project) return
 
     try {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const dateISO = today.toISOString().split('T')[0]
-
-      // Verificar se já existe timesheet OU se o projeto já está nas rows
-      const existsInTimesheets = timesheets.some(
-        ts => ts.project_id === newProjectId && ts.date === dateISO
-      )
-      
+      // Verificar se o projeto já está visível na tabela
       const existsInRows = timesheetRows.some(
         row => row.project.id === newProjectId
       )
 
-      if (existsInTimesheets || existsInRows) {
+      if (existsInRows) {
         alert('Este projeto já está no seu timesheet.')
         setNewProjectId('')
         return
       }
 
-      // Criar timesheet com actual_hours = 0 para aparecer na tela
+      // Criar timesheet para hoje com actual_hours = 0
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const dateISO = today.toISOString().split('T')[0]
+
       const payload = {
         person_id: currentUser.id,
         project_id: newProjectId,
@@ -378,9 +374,11 @@ export default function TimesheetPage() {
         .from('timesheets')
         .insert([payload])
 
-      if (error) throw error
+      if (error) {
+        console.error('Erro do Supabase:', error)
+        throw error
+      }
 
-      // Recarregar timesheets
       await loadTimesheets()
       setNewProjectId('')
     } catch (error: unknown) {
@@ -515,16 +513,17 @@ export default function TimesheetPage() {
 
                 {row.days.map((day, dayIndex) => {
                   const editable = checkCanEditDate(day.dateISO)
-                  const hasDifference = day.actual !== null && day.actual !== day.planned
+                  const hasDifference = day.actual !== null && day.actual !== 0 && day.actual !== day.planned
                   const dateObj = new Date(day.dateISO)
                   const isWeekendDay = dateObj.getDay() === 0 || dateObj.getDay() === 6
+                  const isConfirmed = day.status === 'confirmed' && day.actual !== null && day.actual !== 0
                   
                   return (
                     <td 
                       key={dayIndex}
                       className={`${isWeekendDay ? 'px-1' : 'px-2'} py-2 border-l border-gray-200 overflow-hidden`}
                     >
-                      {day.planned > 0 || day.actual !== null ? (
+                      {isConfirmed ? (
                         <div className={`p-1.5 rounded border min-h-[2rem] flex items-center ${
                           day.status === 'confirmed' 
                             ? 'bg-green-50 border-green-200' 
@@ -595,7 +594,34 @@ export default function TimesheetPage() {
                           )}
                         </div>
                       ) : (
-                        <div className="p-2 text-center text-xs text-gray-400">—</div>
+                        <div className="p-1.5 rounded border border-dashed border-gray-300 bg-gray-50 min-h-[2rem] flex items-center">
+                          <div className="flex items-center gap-1 flex-wrap w-full">
+                            <input
+                              type="number"
+                              min={0}
+                              max={24}
+                              step={0.5}
+                              placeholder="0h"
+                              defaultValue=""
+                              className="w-12 text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              disabled={!editable}
+                              onBlur={(e) => {
+                                const val = parseFloat(e.target.value)
+                                if (!isNaN(val) && val > 0) {
+                                  void updateTimesheet(row.project.id, day.dateISO, val, 0, day.timesheetId)
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const val = parseFloat(e.currentTarget.value)
+                                  if (!isNaN(val) && val > 0) {
+                                    void updateTimesheet(row.project.id, day.dateISO, val, 0, day.timesheetId)
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
                       )}
                     </td>
                   )
