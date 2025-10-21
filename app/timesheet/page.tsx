@@ -327,9 +327,10 @@ export default function TimesheetPage() {
       }
 
       await loadTimesheets()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('💥 Erro geral ao salvar timesheet:', error)
-      alert(`Erro ao salvar: ${error.message || 'Tente novamente.'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Tente novamente.'
+      alert(`Erro ao salvar: ${errorMessage}`)
     }
   }
 
@@ -525,7 +526,7 @@ export default function TimesheetPage() {
                                     if (newVal !== null) {
                                       const val = parseFloat(newVal)
                                       if (!isNaN(val)) {
-                                        updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
+                                        void updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
                                       }
                                     }
                                   }}
