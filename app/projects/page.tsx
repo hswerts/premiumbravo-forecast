@@ -20,7 +20,7 @@ interface Project {
   client_name?: string | null;
   budget_hours?: number | null;
   budget_value?: number | null;
-  status: string; // banco pode ter restos; mapeamos para UI
+  status: string; // pode vir legado
   project_type?: ProjectType | null;
   deadline?: string | null;   // ISO YYYY-MM-DD
   manager_id?: string | null;
@@ -39,7 +39,7 @@ const TYPE_OPTIONS: ProjectType[] = [
   'Outros',
 ];
 
-// --- helpers ---
+// helpers
 function isoToBR(iso?: string | null) {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -65,7 +65,6 @@ const fmtMoeda = (n?: number | null) =>
     ? '—'
     : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(n);
 
-// --- componente ---
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
@@ -73,7 +72,7 @@ export default function ProjectsPage() {
   const [showForm, setShowForm] = useState(true);
   const [editing, setEditing] = useState<Project | null>(null);
 
-  // form em 3 linhas/3 colunas
+  // form
   const [form, setForm] = useState({
     code: '',
     name: '',
@@ -86,7 +85,6 @@ export default function ProjectsPage() {
     managerId: '',
   });
 
-  // carregar dados
   const loadProjects = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('projects').select('*').order('code', { ascending: true });
@@ -99,7 +97,7 @@ export default function ProjectsPage() {
   const loadPeople = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('people').select('id, full_name').order('full_name', { ascending: true });
-      if (error) throw error;
+    if (error) throw error;
       setPeople((data ?? []) as Person[]);
     } catch (err) {
       console.error(err);
@@ -112,7 +110,6 @@ export default function ProjectsPage() {
 
   const peopleDict = useMemo(() => Object.fromEntries(people.map(p => [p.id, p.full_name])), [people]);
 
-  // form helpers
   const resetForm = () => {
     setEditing(null);
     setForm({
@@ -148,7 +145,6 @@ export default function ProjectsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // salvar
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) {
@@ -189,14 +185,14 @@ export default function ProjectsPage() {
     }
   };
 
-  // --- Ordenação (como na página Equipe) ---
+  // ------- Ordenação (sem any) -------
   type SortKey =
     | 'code'
     | 'name'
     | 'client_name'
     | 'budget_hours'
     | 'budget_value'
-    | 'status'
+    | 'status'       // usamos status mapeado
     | 'project_type'
     | 'deadline'
     | 'manager_name';
@@ -204,41 +200,76 @@ export default function ProjectsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('code');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const sorted = useMemo(() => {
-    const arr = projects.map(p => ({
+  type Row = Project & { statusUi: ProjectStatus; manager_name: string };
+
+  const sorted: Row[] = useMemo(() => {
+    const arr: Row[] = projects.map(p => ({
       ...p,
       statusUi: mapDbStatusToUi(p.status),
       manager_name: p.manager_id ? peopleDict[p.manager_id] ?? '' : '',
     }));
-    const getVal = (r: any) => {
-      if (sortKey === 'manager_name') return r.manager_name ?? '';
-      return (r as any)[sortKey];
+
+    const cmp = (a: Row, b: Row): number => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      switch (sortKey) {
+        case 'code': {
+          const sa = a.code.toString().toLowerCase();
+          const sb = b.code.toString().toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'name': {
+          const sa = (a.name ?? '').toLowerCase();
+          const sb = (b.name ?? '').toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'client_name': {
+          const sa = (a.client_name ?? '').toLowerCase();
+          const sb = (b.client_name ?? '').toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'budget_hours': {
+          const na = a.budget_hours ?? -Infinity;
+          const nb = b.budget_hours ?? -Infinity;
+          return (na - nb) * dir;
+        }
+        case 'budget_value': {
+          const na = a.budget_value ?? -Infinity;
+          const nb = b.budget_value ?? -Infinity;
+          return (na - nb) * dir;
+        }
+        case 'status': {
+          const sa = a.statusUi.toLowerCase();
+          const sb = b.statusUi.toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'project_type': {
+          const sa = (a.project_type ?? '').toLowerCase();
+          const sb = (b.project_type ?? '').toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'deadline': {
+          const sa = a.deadline ?? '';
+          const sb = b.deadline ?? '';
+          return sa.localeCompare(sb) * dir;
+        }
+        case 'manager_name': {
+          const sa = a.manager_name.toLowerCase();
+          const sb = b.manager_name.toLowerCase();
+          return sa.localeCompare(sb) * dir;
+        }
+        default:
+          return 0;
+      }
     };
-    arr.sort((a, b) => {
-      const va = getVal(a);
-      const vb = getVal(b);
-      // números
-      if (typeof va === 'number' && typeof vb === 'number') {
-        return sortDir === 'asc' ? va - vb : vb - va;
-      }
-      // datas (ISO)
-      if (sortKey === 'deadline') {
-        const da = a.deadline ?? '';
-        const db = b.deadline ?? '';
-        return sortDir === 'asc' ? da.localeCompare(db) : db.localeCompare(da);
-      }
-      // strings (case-insensitive)
-      const sa = (va ?? '').toString().toLowerCase();
-      const sb = (vb ?? '').toString().toLowerCase();
-      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
-    });
-    return arr;
+
+    return arr.sort(cmp);
   }, [projects, peopleDict, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     setSortKey(prev => (prev === key ? prev : key));
     setSortDir(prev => (sortKey === key ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'));
   };
+
   const SortButton = ({ label, keyName }: { label: string; keyName: SortKey }) => (
     <button
       type="button"
@@ -264,7 +295,6 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Projetos PremiumBravo</h1>
         <button
@@ -278,7 +308,6 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* card do formulário */}
       {showForm && (
         <div className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-semibold mb-4">{editing ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</h2>
@@ -371,9 +400,7 @@ export default function ProjectsPage() {
                 >
                   <option value="">Selecione…</option>
                   {TYPE_OPTIONS.map(t => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
+                    <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
@@ -399,9 +426,7 @@ export default function ProjectsPage() {
                 >
                   <option value="">Selecione…</option>
                   {people.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name}
-                    </option>
+                    <option key={p.id} value={p.id}>{p.full_name}</option>
                   ))}
                 </select>
               </div>
@@ -456,7 +481,6 @@ export default function ProjectsPage() {
               </tr>
             )}
             {sorted.map(p => {
-              const statusUi = mapDbStatusToUi(p.status);
               const gestor = p.manager_id ? peopleDict[p.manager_id] ?? p.manager_id : '—';
               return (
                 <tr key={p.id} className="border-t">
@@ -465,7 +489,7 @@ export default function ProjectsPage() {
                   <td className="p-3">{p.client_name ?? '—'}</td>
                   <td className="p-3 text-right">{fmtHoras(p.budget_hours)}</td>
                   <td className="p-3 text-right">{fmtMoeda(p.budget_value)}</td>
-                  <td className="p-3"><StatusBadge value={statusUi} /></td>
+                  <td className="p-3"><StatusBadge value={p.statusUi} /></td>
                   <td className="p-3">{p.project_type ?? '—'}</td>
                   <td className="p-3">{isoToBR(p.deadline) || '—'}</td>
                   <td className="p-3">{gestor}</td>
