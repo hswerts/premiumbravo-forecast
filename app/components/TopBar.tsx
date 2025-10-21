@@ -23,6 +23,7 @@ export default function TopBar() {
             <Link href="/projects" className={linkCls('/projects')}>Projetos</Link>
             <Link href="/people"   className={linkCls('/people')}>Equipe</Link>
             <Link href="/timeline" className={linkCls('/timeline')}>Timeline</Link>
+            <Link href="/timesheet" className={linkCls('/timesheet')}>Timesheet</Link>
             <Link href="/reports"  className={linkCls('/reports')}>Relatórios</Link>
           </nav>
         </div>
