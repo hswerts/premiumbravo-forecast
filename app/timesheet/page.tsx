@@ -344,12 +344,34 @@ export default function TimesheetPage() {
     const project = projects.find(p => p.id === newProjectId)
     if (!project) return
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const dateISO = today.toISOString().split('T')[0]
+    try {
+      // Criar um timesheet pendente com planned_hours = 0 e actual_hours = 0
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const dateISO = today.toISOString().split('T')[0]
 
-    await updateTimesheet(newProjectId, dateISO, null, 0, undefined)
-    setNewProjectId('')
+      const payload = {
+        person_id: currentUser.id,
+        project_id: newProjectId,
+        date: dateISO,
+        planned_hours: 0,
+        actual_hours: 0,
+        status: 'pending' as const,
+      }
+
+      const { error } = await supabase
+        .from('timesheets')
+        .insert([payload])
+
+      if (error) throw error
+
+      await loadTimesheets()
+      setNewProjectId('')
+    } catch (error: unknown) {
+      console.error('Erro ao adicionar projeto:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Tente novamente.'
+      alert(`Erro ao adicionar projeto: ${errorMessage}`)
+    }
   }
 
   const availableProjects = projects.filter(p => 
