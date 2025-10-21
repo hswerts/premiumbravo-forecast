@@ -56,6 +56,7 @@ export default function TimesheetPage() {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
   const [currentWeek, setCurrentWeek] = useState<Date[]>([])
   const [timesheetRows, setTimesheetRows] = useState<TimesheetRow[]>([])
+  const [newProjectId, setNewProjectId] = useState<string>('')
 
   // Simular usuário logado (substitua pela lógica real de autenticação)
   useEffect(() => {
