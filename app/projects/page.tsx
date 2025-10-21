@@ -20,9 +20,9 @@ interface Project {
   client_name?: string | null;
   budget_hours?: number | null;
   budget_value?: number | null;
-  status: string; // pode vir legado
+  status: string;
   project_type?: ProjectType | null;
-  deadline?: string | null;   // ISO YYYY-MM-DD
+  deadline?: string | null;
   manager_id?: string | null;
 }
 
@@ -97,7 +97,7 @@ export default function ProjectsPage() {
   const loadPeople = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('people').select('id, full_name').order('full_name', { ascending: true });
-    if (error) throw error;
+      if (error) throw error;
       setPeople((data ?? []) as Person[]);
     } catch (err) {
       console.error(err);
@@ -185,14 +185,14 @@ export default function ProjectsPage() {
     }
   };
 
-  // ------- Ordenação (sem any) -------
+  // Ordenação
   type SortKey =
     | 'code'
     | 'name'
     | 'client_name'
     | 'budget_hours'
     | 'budget_value'
-    | 'status'       // usamos status mapeado
+    | 'status'
     | 'project_type'
     | 'deadline'
     | 'manager_name';
@@ -274,19 +274,19 @@ export default function ProjectsPage() {
     <button
       type="button"
       onClick={() => toggleSort(keyName)}
-      className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+      className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700"
       title="Ordenar"
     >
       {label}
-      <span className="text-gray-400">{sortKey === keyName ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      <span className="text-gray-400 text-[10px]">{sortKey === keyName ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
     </button>
   );
 
   const StatusBadge = ({ value }: { value: ProjectStatus }) => (
     <span
       className={
-        'px-2 py-0.5 text-xs rounded-full ' +
-        (value === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')
+        'px-2 py-0.5 text-[11px] font-medium rounded ' +
+        (value === 'Aberto' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
       }
     >
       {value}
@@ -294,11 +294,11 @@ export default function ProjectsPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Projetos PremiumBravo</h1>
+        <h1 className="text-xl font-semibold text-gray-800">Projetos PremiumBravo <span className="text-xs text-gray-400 font-normal ml-1">v3</span></h1>
         <button
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white shadow hover:opacity-90"
+          className="px-4 py-1.5 text-sm rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors"
           onClick={() => {
             if (editing) resetForm();
             setShowForm(s => !s);
@@ -309,18 +309,18 @@ export default function ProjectsPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">{editing ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* linha 1 */}
               <div>
-                <label className="block text-sm font-medium mb-1">Código *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Código *</label>
                 <input
                   type="text"
                   name="code"
                   inputMode="numeric"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex: 1234"
                   value={form.code}
                   onChange={handleChange}
@@ -328,11 +328,11 @@ export default function ProjectsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Nome do Projeto *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nome do Projeto *</label>
                 <input
                   type="text"
                   name="name"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex: Auditoria Contábil 2024"
                   value={form.name}
                   onChange={handleChange}
@@ -340,11 +340,11 @@ export default function ProjectsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Cliente</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cliente</label>
                 <input
                   type="text"
                   name="clientName"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Nome do cliente"
                   value={form.clientName}
                   onChange={handleChange}
@@ -352,36 +352,36 @@ export default function ProjectsPage() {
               </div>
               {/* linha 2 */}
               <div>
-                <label className="block text-sm font-medium mb-1">Horas Previstas</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Horas Previstas</label>
                 <input
                   type="number"
                   step="0.1"
                   min="0"
                   name="budgetHours"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex: 160"
                   value={form.budgetHours}
                   onChange={handleChange}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Valor Total (R$)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Valor Total (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   name="budgetValue"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex: 25000"
                   value={form.budgetValue}
                   onChange={handleChange}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                 <select
                   name="status"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={form.status}
                   onChange={handleChange}
                 >
@@ -391,10 +391,10 @@ export default function ProjectsPage() {
               </div>
               {/* linha 3 */}
               <div>
-                <label className="block text-sm font-medium mb-1">Tipo do Projeto</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Tipo do Projeto</label>
                 <select
                   name="projectType"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={form.projectType}
                   onChange={handleChange}
                 >
@@ -405,11 +405,11 @@ export default function ProjectsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Prazo final (dd/mm/aaaa)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Prazo final (dd/mm/aaaa)</label>
                 <input
                   type="text"
                   name="deadlineBr"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="dd/mm/aaaa"
                   value={form.deadlineBr}
                   onChange={handleChange}
@@ -417,10 +417,10 @@ export default function ProjectsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Gestor (people)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Gestor (people)</label>
                 <select
                   name="managerId"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={form.managerId}
                   onChange={handleChange}
                 >
@@ -432,17 +432,17 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 rounded-lg bg-green-600 text-white disabled:opacity-60"
+                className="px-4 py-1.5 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                {editing ? 'Salvar Projeto' : 'Salvar Projeto'}
+                Salvar Projeto
               </button>
               <button
                 type="button"
-                className="px-4 py-2 rounded-lg bg-gray-500 text-white"
+                className="px-4 py-1.5 text-sm rounded-md bg-gray-500 text-white hover:bg-gray-600 transition-colors"
                 onClick={() => {
                   resetForm();
                   setShowForm(false);
@@ -456,53 +456,55 @@ export default function ProjectsPage() {
       )}
 
       {/* tabela */}
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
-        <table className="min-w-full">
-          <thead className="bg-gray-50 text-gray-700">
-            <tr>
-              <th className="text-left p-3"><SortButton label="CÓDIGO" keyName="code" /></th>
-              <th className="text-left p-3"><SortButton label="PROJETO" keyName="name" /></th>
-              <th className="text-left p-3"><SortButton label="CLIENTE" keyName="client_name" /></th>
-              <th className="text-right p-3"><SortButton label="HORAS" keyName="budget_hours" /></th>
-              <th className="text-right p-3"><SortButton label="VALOR" keyName="budget_value" /></th>
-              <th className="text-left p-3"><SortButton label="STATUS" keyName="status" /></th>
-              <th className="text-left p-3"><SortButton label="TIPO" keyName="project_type" /></th>
-              <th className="text-left p-3"><SortButton label="PRAZO" keyName="deadline" /></th>
-              <th className="text-left p-3"><SortButton label="GESTOR" keyName="manager_name" /></th>
-              <th className="text-left p-3">AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.length === 0 && (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <td className="p-4 text-center text-gray-500" colSpan={10}>
-                  Nenhum projeto cadastrado ainda
-                </td>
+                <th className="text-left px-3 py-2"><SortButton label="CÓDIGO" keyName="code" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="PROJETO" keyName="name" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="CLIENTE" keyName="client_name" /></th>
+                <th className="text-right px-3 py-2"><SortButton label="HORAS" keyName="budget_hours" /></th>
+                <th className="text-right px-3 py-2"><SortButton label="VALOR" keyName="budget_value" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="STATUS" keyName="status" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="TIPO" keyName="project_type" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="PRAZO" keyName="deadline" /></th>
+                <th className="text-left px-3 py-2"><SortButton label="GESTOR" keyName="manager_name" /></th>
+                <th className="text-left px-3 py-2 text-xs font-medium text-gray-500">AÇÕES</th>
               </tr>
-            )}
-            {sorted.map(p => {
-              const gestor = p.manager_id ? peopleDict[p.manager_id] ?? p.manager_id : '—';
-              return (
-                <tr key={p.id} className="border-t">
-                  <td className="p-3">{p.code}</td>
-                  <td className="p-3">{p.name}</td>
-                  <td className="p-3">{p.client_name ?? '—'}</td>
-                  <td className="p-3 text-right">{fmtHoras(p.budget_hours)}</td>
-                  <td className="p-3 text-right">{fmtMoeda(p.budget_value)}</td>
-                  <td className="p-3"><StatusBadge value={p.statusUi} /></td>
-                  <td className="p-3">{p.project_type ?? '—'}</td>
-                  <td className="p-3">{isoToBR(p.deadline) || '—'}</td>
-                  <td className="p-3">{gestor}</td>
-                  <td className="p-3">
-                    <button className="text-blue-600 underline" onClick={() => startEdit(p)}>
-                      Editar
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {sorted.length === 0 && (
+                <tr>
+                  <td className="px-3 py-6 text-center text-sm text-gray-500" colSpan={10}>
+                    Nenhum projeto cadastrado ainda
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {sorted.map(p => {
+                const gestor = p.manager_id ? peopleDict[p.manager_id] ?? p.manager_id : '—';
+                return (
+                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-2 text-sm text-gray-900">{p.code}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{p.name}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{p.client_name ?? '—'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 text-right">{fmtHoras(p.budget_hours)}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 text-right">{fmtMoeda(p.budget_value)}</td>
+                    <td className="px-3 py-2"><StatusBadge value={p.statusUi} /></td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{p.project_type ?? '—'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{isoToBR(p.deadline) || '—'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{gestor}</td>
+                    <td className="px-3 py-2">
+                      <button className="text-blue-600 text-sm hover:text-blue-800 underline" onClick={() => startEdit(p)}>
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
