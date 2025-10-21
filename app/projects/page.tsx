@@ -20,10 +20,10 @@ interface Project {
   client_name?: string | null;
   budget_hours?: number | null;
   budget_value?: number | null;
-  status: ProjectStatus;
+  status: string; // banco pode ter restos; mapeamos para UI
   project_type?: ProjectType | null;
-  deadline?: string | null;   // ISO 'YYYY-MM-DD' no banco
-  manager_id?: string | null; // FK -> people.id
+  deadline?: string | null;   // ISO YYYY-MM-DD
+  manager_id?: string | null;
 }
 
 interface Person {
@@ -39,7 +39,7 @@ const TYPE_OPTIONS: ProjectType[] = [
   'Outros',
 ];
 
-// helpers de data
+// --- helpers ---
 function isoToBR(iso?: string | null) {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -52,70 +52,67 @@ function brToISO(br?: string) {
   if (!m) return null;
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
+function mapDbStatusToUi(s: string | null | undefined): ProjectStatus {
+  if (!s) return 'Aberto';
+  const x = s.toLowerCase();
+  if (x === 'fechado' || x === 'closed') return 'Fechado';
+  return 'Aberto';
+}
+const fmtHoras = (n?: number | null) =>
+  n == null ? '—' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(n);
+const fmtMoeda = (n?: number | null) =>
+  n == null
+    ? '—'
+    : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(n);
 
+// --- componente ---
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [showForm, setShowForm] = useState<boolean>(true);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [editing, setEditing] = useState<Project | null>(null);
 
+  // form em 3 linhas/3 colunas
   const [form, setForm] = useState({
-    // linha 1
     code: '',
     name: '',
     clientName: '',
-    // linha 2
     budgetHours: '',
     budgetValue: '',
     status: 'Aberto' as ProjectStatus,
-    // linha 3
     projectType: '' as '' | ProjectType,
-    deadlineBr: '', // dd/mm/aaaa na UI
+    deadlineBr: '',
     managerId: '',
   });
 
-  // ------ LOADERS ------
+  // carregar dados
   const loadProjects = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('code', { ascending: true });
-
+      const { data, error } = await supabase.from('projects').select('*').order('code', { ascending: true });
       if (error) throw error;
       setProjects((data ?? []) as Project[]);
-    } catch (err: unknown) {
-      if (err instanceof Error) alert(`Erro ao carregar projects: ${err.message}`);
+    } catch (err) {
       console.error(err);
     }
   }, []);
-
   const loadPeople = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('people')
-        .select('id, full_name')
-        .order('full_name', { ascending: true });
-
+      const { data, error } = await supabase.from('people').select('id, full_name').order('full_name', { ascending: true });
       if (error) throw error;
       setPeople((data ?? []) as Person[]);
-    } catch (err: unknown) {
+    } catch (err) {
       console.error(err);
     }
   }, []);
-
   useEffect(() => {
     void loadProjects();
     void loadPeople();
   }, [loadProjects, loadPeople]);
 
-  const peopleDict = useMemo(
-    () => Object.fromEntries(people.map(p => [p.id, p.full_name])),
-    [people]
-  );
+  const peopleDict = useMemo(() => Object.fromEntries(people.map(p => [p.id, p.full_name])), [people]);
 
-  // ------ HELPERS ------
+  // form helpers
   const resetForm = () => {
     setEditing(null);
     setForm({
@@ -130,14 +127,10 @@ export default function ProjectsPage() {
       managerId: '',
     });
   };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
-
   const startEdit = (p: Project) => {
     setEditing(p);
     setShowForm(true);
@@ -147,7 +140,7 @@ export default function ProjectsPage() {
       clientName: p.client_name ?? '',
       budgetHours: p.budget_hours != null ? String(p.budget_hours) : '',
       budgetValue: p.budget_value != null ? String(p.budget_value) : '',
-      status: (p.status ?? 'Aberto') as ProjectStatus,
+      status: mapDbStatusToUi(p.status),
       projectType: (p.project_type ?? '') as '' | ProjectType,
       deadlineBr: isoToBR(p.deadline),
       managerId: p.manager_id ?? '',
@@ -155,38 +148,24 @@ export default function ProjectsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ------ SUBMIT ------
+  // salvar
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) {
       alert('Preencha Código e Nome do projeto.');
       return;
     }
-
-    const budget_hours =
-      form.budgetHours.trim() === ''
-        ? null
-        : Number(form.budgetHours.replace(',', '.'));
-    const budget_value =
-      form.budgetValue.trim() === ''
-        ? null
-        : Number(form.budgetValue.replace(',', '.'));
-    if (budget_hours != null && (Number.isNaN(budget_hours) || budget_hours < 0)) {
-      alert('Horas previstas inválidas.'); return;
-    }
-    if (budget_value != null && (Number.isNaN(budget_value) || budget_value < 0)) {
-      alert('Valor previsto inválido.'); return;
-    }
-
+    const budget_hours = form.budgetHours.trim() === '' ? null : Number(form.budgetHours.replace(',', '.'));
+    const budget_value = form.budgetValue.trim() === '' ? null : Number(form.budgetValue.replace(',', '.'));
     const payload = {
       code: form.code.trim(),
       name: form.name.trim(),
       client_name: form.clientName.trim() || null,
       budget_hours,
       budget_value,
-      status: form.status, // 'Aberto' | 'Fechado'
+      status: form.status,
       project_type: form.projectType || null,
-      deadline: brToISO(form.deadlineBr),   // converte para ISO
+      deadline: brToISO(form.deadlineBr),
       manager_id: form.managerId || null,
     };
 
@@ -195,31 +174,88 @@ export default function ProjectsPage() {
       if (editing) {
         const { error } = await supabase.from('projects').update(payload).eq('id', editing.id);
         if (error) throw error;
-        alert('Projeto atualizado com sucesso!');
       } else {
         const { error } = await supabase.from('projects').insert(payload);
         if (error) throw error;
-        alert('Projeto criado com sucesso!');
       }
       await loadProjects();
       resetForm();
       setShowForm(true);
-    } catch (err: unknown) {
-      if (err instanceof Error) alert(`Erro ao salvar projeto: ${err.message}`);
+    } catch (err) {
       console.error(err);
+      alert('Erro ao salvar projeto.');
     } finally {
       setLoading(false);
     }
   };
 
-  // badge de status na lista
+  // --- Ordenação (como na página Equipe) ---
+  type SortKey =
+    | 'code'
+    | 'name'
+    | 'client_name'
+    | 'budget_hours'
+    | 'budget_value'
+    | 'status'
+    | 'project_type'
+    | 'deadline'
+    | 'manager_name';
+
+  const [sortKey, setSortKey] = useState<SortKey>('code');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sorted = useMemo(() => {
+    const arr = projects.map(p => ({
+      ...p,
+      statusUi: mapDbStatusToUi(p.status),
+      manager_name: p.manager_id ? peopleDict[p.manager_id] ?? '' : '',
+    }));
+    const getVal = (r: any) => {
+      if (sortKey === 'manager_name') return r.manager_name ?? '';
+      return (r as any)[sortKey];
+    };
+    arr.sort((a, b) => {
+      const va = getVal(a);
+      const vb = getVal(b);
+      // números
+      if (typeof va === 'number' && typeof vb === 'number') {
+        return sortDir === 'asc' ? va - vb : vb - va;
+      }
+      // datas (ISO)
+      if (sortKey === 'deadline') {
+        const da = a.deadline ?? '';
+        const db = b.deadline ?? '';
+        return sortDir === 'asc' ? da.localeCompare(db) : db.localeCompare(da);
+      }
+      // strings (case-insensitive)
+      const sa = (va ?? '').toString().toLowerCase();
+      const sb = (vb ?? '').toString().toLowerCase();
+      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+    return arr;
+  }, [projects, peopleDict, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    setSortKey(prev => (prev === key ? prev : key));
+    setSortDir(prev => (sortKey === key ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'));
+  };
+  const SortButton = ({ label, keyName }: { label: string; keyName: SortKey }) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(keyName)}
+      className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+      title="Ordenar"
+    >
+      {label}
+      <span className="text-gray-400">{sortKey === keyName ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+    </button>
+  );
+
   const StatusBadge = ({ value }: { value: ProjectStatus }) => (
     <span
       className={
-        'px-2 py-1 text-xs rounded-full ' +
-        (value === 'Aberto'
-          ? 'bg-green-100 text-green-800'
-          : 'bg-red-100 text-red-800')
+        'px-2 py-0.5 text-xs rounded-full ' +
+        (value === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')
       }
     >
       {value}
@@ -228,12 +264,11 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          Projetos PremiumBravo <small className="ml-2 text-xs text-gray-500">v3</small>
-        </h1>
+        <h1 className="text-2xl font-semibold">Projetos PremiumBravo</h1>
         <button
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white"
+          className="px-4 py-2 rounded-lg bg-blue-600 text-white shadow hover:opacity-90"
           onClick={() => {
             if (editing) resetForm();
             setShowForm(s => !s);
@@ -243,14 +278,11 @@ export default function ProjectsPage() {
         </button>
       </div>
 
+      {/* card do formulário */}
       {showForm && (
         <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            {editing ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}
-          </h2>
-
+          <h2 className="text-lg font-semibold mb-4">{editing ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* grade 3 colunas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* linha 1 */}
               <div>
@@ -289,7 +321,6 @@ export default function ProjectsPage() {
                   onChange={handleChange}
                 />
               </div>
-
               {/* linha 2 */}
               <div>
                 <label className="block text-sm font-medium mb-1">Horas Previstas</label>
@@ -329,7 +360,6 @@ export default function ProjectsPage() {
                   <option value="Fechado">Fechado</option>
                 </select>
               </div>
-
               {/* linha 3 */}
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo do Projeto</label>
@@ -340,15 +370,15 @@ export default function ProjectsPage() {
                   onChange={handleChange}
                 >
                   <option value="">Selecione…</option>
-                  {TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                  {TYPE_OPTIONS.map(t => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Prazo final (dd/mm/aaaa)
-                </label>
+                <label className="block text-sm font-medium mb-1">Prazo final (dd/mm/aaaa)</label>
                 <input
                   type="text"
                   name="deadlineBr"
@@ -368,8 +398,10 @@ export default function ProjectsPage() {
                   onChange={handleChange}
                 >
                   <option value="">Selecione…</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>{p.full_name}</option>
+                  {people.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.full_name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -386,7 +418,10 @@ export default function ProjectsPage() {
               <button
                 type="button"
                 className="px-4 py-2 rounded-lg bg-gray-500 text-white"
-                onClick={() => { resetForm(); setShowForm(false); }}
+                onClick={() => {
+                  resetForm();
+                  setShowForm(false);
+                }}
               >
                 Cancelar
               </button>
@@ -395,49 +430,53 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* LISTA */}
-      <div className="overflow-x-auto bg-white rounded-xl shadow">
+      {/* tabela */}
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 text-gray-700">
             <tr>
-              <th className="text-left p-3">CÓDIGO</th>
-              <th className="text-left p-3">PROJETO</th>
-              <th className="text-left p-3">CLIENTE</th>
-              <th className="text-right p-3">HORAS</th>
-              <th className="text-right p-3">VALOR</th>
-              <th className="text-left p-3">STATUS</th>
-              <th className="text-left p-3">TIPO</th>
-              <th className="text-left p-3">PRAZO</th>
-              <th className="text-left p-3">GESTOR</th>
+              <th className="text-left p-3"><SortButton label="CÓDIGO" keyName="code" /></th>
+              <th className="text-left p-3"><SortButton label="PROJETO" keyName="name" /></th>
+              <th className="text-left p-3"><SortButton label="CLIENTE" keyName="client_name" /></th>
+              <th className="text-right p-3"><SortButton label="HORAS" keyName="budget_hours" /></th>
+              <th className="text-right p-3"><SortButton label="VALOR" keyName="budget_value" /></th>
+              <th className="text-left p-3"><SortButton label="STATUS" keyName="status" /></th>
+              <th className="text-left p-3"><SortButton label="TIPO" keyName="project_type" /></th>
+              <th className="text-left p-3"><SortButton label="PRAZO" keyName="deadline" /></th>
+              <th className="text-left p-3"><SortButton label="GESTOR" keyName="manager_name" /></th>
               <th className="text-left p-3">AÇÕES</th>
             </tr>
           </thead>
           <tbody>
-            {projects.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td className="p-4 text-center text-gray-500" colSpan={10}>
                   Nenhum projeto cadastrado ainda
                 </td>
               </tr>
             )}
-            {projects.map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="p-3">{p.code}</td>
-                <td className="p-3">{p.name}</td>
-                <td className="p-3">{p.client_name ?? '—'}</td>
-                <td className="p-3 text-right">{p.budget_hours ?? '—'}</td>
-                <td className="p-3 text-right">{p.budget_value ?? '—'}</td>
-                <td className="p-3"><StatusBadge value={p.status} /></td>
-                <td className="p-3">{p.project_type ?? '—'}</td>
-                <td className="p-3">{isoToBR(p.deadline) || '—'}</td>
-                <td className="p-3">{p.manager_id ? (peopleDict[p.manager_id] ?? p.manager_id) : '—'}</td>
-                <td className="p-3">
-                  <button className="text-blue-600 underline" onClick={() => startEdit(p)}>
-                    Editar
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {sorted.map(p => {
+              const statusUi = mapDbStatusToUi(p.status);
+              const gestor = p.manager_id ? peopleDict[p.manager_id] ?? p.manager_id : '—';
+              return (
+                <tr key={p.id} className="border-t">
+                  <td className="p-3">{p.code}</td>
+                  <td className="p-3">{p.name}</td>
+                  <td className="p-3">{p.client_name ?? '—'}</td>
+                  <td className="p-3 text-right">{fmtHoras(p.budget_hours)}</td>
+                  <td className="p-3 text-right">{fmtMoeda(p.budget_value)}</td>
+                  <td className="p-3"><StatusBadge value={statusUi} /></td>
+                  <td className="p-3">{p.project_type ?? '—'}</td>
+                  <td className="p-3">{isoToBR(p.deadline) || '—'}</td>
+                  <td className="p-3">{gestor}</td>
+                  <td className="p-3">
+                    <button className="text-blue-600 underline" onClick={() => startEdit(p)}>
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
