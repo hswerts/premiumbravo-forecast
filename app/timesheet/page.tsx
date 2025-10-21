@@ -58,14 +58,12 @@ export default function TimesheetPage() {
   const [timesheetRows, setTimesheetRows] = useState<TimesheetRow[]>([])
   const [newProjectId, setNewProjectId] = useState<string>('')
 
-  // Simular usuário logado (substitua pela lógica real de autenticação)
   useEffect(() => {
     loadCurrentUser()
   }, [])
 
   const loadCurrentUser = async () => {
     try {
-      // TODO: Substituir pela lógica real de autenticação baseada no pin_hash
       const { data, error } = await supabase
         .from('people')
         .select('*')
@@ -141,11 +139,10 @@ export default function TimesheetPage() {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     const fourWeeksAgo = new Date(now)
-    fourWeeksAgo.setDate(now.getDate() - 28) // 4 semanas para trás
+    fourWeeksAgo.setDate(now.getDate() - 28)
 
     const projectMap = new Map<string, TimesheetRow>()
 
-    // Processar assignments
     assignments.forEach(assignment => {
       const assignDate = new Date(assignment.date)
       if (assignDate < fourWeeksAgo) return
@@ -175,7 +172,6 @@ export default function TimesheetPage() {
       }
     })
 
-    // Sobrescrever com dados reais do timesheet
     timesheets.forEach(ts => {
       const proj = projects.find(p => p.id === ts.project_id)
       if (!proj) return
@@ -215,7 +211,7 @@ export default function TimesheetPage() {
 
   useEffect(() => {
     if (currentUser) {
-      generateWeek(0) // Sempre inicia na semana atual
+      generateWeek(0)
       loadAllData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,7 +229,6 @@ export default function TimesheetPage() {
     base.setHours(0, 0, 0, 0)
     base.setDate(base.getDate() + offset)
 
-    // Gerar 10 dias: hoje -8 até hoje +1
     const startDay = new Date(base)
     startDay.setDate(base.getDate() - 8)
 
@@ -250,21 +245,15 @@ export default function TimesheetPage() {
     const firstDay = currentWeek[0]
     if (!firstDay) return
     
-    // Mover 1 dia de cada vez
     const newFirstDay = new Date(firstDay)
     newFirstDay.setDate(firstDay.getDate() + (direction === 'next' ? 1 : -1))
     
-    // Calcular offset baseado na diferença para hoje
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Calcular quantos dias o primeiro dia está em relação a hoje
     const diffTime = newFirstDay.getTime() - today.getTime()
     const diffDays = Math.round(diffTime / (24 * 60 * 60 * 1000))
     
-    // O offset precisa considerar que começamos 8 dias atrás
-    // Se o primeiro dia é hoje-8, o offset deve ser 0
-    // Se o primeiro dia é hoje-7, o offset deve ser 1, etc
     generateWeek(diffDays + 8)
   }
 
@@ -343,6 +332,30 @@ export default function TimesheetPage() {
     await updateTimesheet(projectId, dateISO, plannedHours, plannedHours, timesheetId)
   }
 
+  const getTotalHoursByDay = (dateISO: string): number => {
+    return timesheets
+      .filter(ts => ts.date === dateISO && ts.actual_hours !== null)
+      .reduce((sum, ts) => sum + (ts.actual_hours || 0), 0)
+  }
+
+  const addNewProject = async () => {
+    if (!newProjectId || !currentUser) return
+
+    const project = projects.find(p => p.id === newProjectId)
+    if (!project) return
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const dateISO = today.toISOString().split('T')[0]
+
+    await updateTimesheet(newProjectId, dateISO, null, 0, undefined)
+    setNewProjectId('')
+  }
+
+  const availableProjects = projects.filter(p => 
+    !timesheetRows.some(row => row.project.id === p.id)
+  )
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pt-BR', { 
       day: '2-digit', 
@@ -393,7 +406,6 @@ export default function TimesheetPage() {
         </div>
       </div>
 
-      {/* Timeline */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto">
         <table className="w-full table-fixed">
           <colgroup>
@@ -418,7 +430,7 @@ export default function TimesheetPage() {
 
           <thead>
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 bg-gray-50 border-b">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 bg-gray-100 border-b-2 border-gray-300">
                 Projeto
               </th>
               {currentWeek.map((date, index) => {
@@ -430,12 +442,12 @@ export default function TimesheetPage() {
                 return (
                   <th
                     key={index}
-                    className={`px-1 py-2 text-center text-xs font-medium border-b ${
+                    className={`px-1 py-2 text-center text-xs font-medium border-b-2 border-gray-300 ${
                       isToday
                         ? 'bg-blue-100 text-blue-800 font-bold'
                         : isWeekendDay
                         ? 'bg-gray-200 text-gray-600'
-                        : 'bg-gray-50 text-gray-700'
+                        : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     {formatDate(date)}
@@ -472,7 +484,7 @@ export default function TimesheetPage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className="px-2 py-2 border-l border-gray-200"
+                      className={`${isWeekendDay ? 'px-1' : 'px-2'} py-2 border-l border-gray-200 overflow-hidden`}
                     >
                       {day.planned > 0 || day.actual !== null ? (
                         <div className={`p-1.5 rounded border min-h-[2rem] flex items-center ${
@@ -552,11 +564,68 @@ export default function TimesheetPage() {
                 })}
               </tr>
             ))}
+
+            {availableProjects.length > 0 && (
+              <tr className="border-t-2 border-gray-300 bg-blue-50">
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={newProjectId}
+                      onChange={(e) => setNewProjectId(e.target.value)}
+                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">+ Adicionar projeto...</option>
+                      {availableProjects.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.code}: {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={addNewProject}
+                      disabled={!newProjectId}
+                      className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                </td>
+                <td colSpan={10} className="px-2 py-2 text-center text-xs text-gray-500">
+                  Selecione um projeto para adicionar ao timesheet
+                </td>
+              </tr>
+            )}
+
+            <tr className="border-t-2 border-gray-400 bg-gray-50 font-semibold">
+              <td className="px-3 py-2 text-sm text-gray-900">
+                TOTAL DO DIA
+              </td>
+              {currentWeek.map((date, dayIndex) => {
+                const dateISO = date.toISOString().split('T')[0]
+                const totalHours = getTotalHoursByDay(dateISO)
+                const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
+                const hasHours = totalHours > 0
+
+                return (
+                  <td 
+                    key={dayIndex}
+                    className={`${isWeekendDay ? 'px-1' : 'px-2'} py-2 border-l border-gray-300 text-center`}
+                  >
+                    <div className={`text-sm font-bold ${
+                      hasHours 
+                        ? totalHours > 8 ? 'text-red-600' : 'text-green-700'
+                        : 'text-gray-400'
+                    }`}>
+                      {hasHours ? `${totalHours.toFixed(1)}h` : '—'}
+                    </div>
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Legenda */}
       <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
         <h3 className="text-sm font-semibold text-blue-800 mb-1.5">Como usar:</h3>
         <ul className="text-xs text-blue-700 space-y-0.5">
