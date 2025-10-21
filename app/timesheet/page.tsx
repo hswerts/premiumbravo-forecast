@@ -60,7 +60,6 @@ export default function TimesheetPage() {
   // Simular usuário logado (substitua pela lógica real de autenticação)
   useEffect(() => {
     loadCurrentUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadCurrentUser = async () => {
