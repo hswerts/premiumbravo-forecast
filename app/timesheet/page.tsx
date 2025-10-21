@@ -345,17 +345,31 @@ export default function TimesheetPage() {
     if (!project) return
 
     try {
-      // Criar um timesheet pendente com planned_hours = 0 e actual_hours = 0
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const dateISO = today.toISOString().split('T')[0]
+
+      // Verificar se já existe timesheet para este projeto/pessoa/data
+      const { data: existing } = await supabase
+        .from('timesheets')
+        .select('id')
+        .eq('person_id', currentUser.id)
+        .eq('project_id', newProjectId)
+        .eq('date', dateISO)
+        .single()
+
+      if (existing) {
+        alert('Este projeto já está no seu timesheet para hoje.')
+        setNewProjectId('')
+        return
+      }
 
       const payload = {
         person_id: currentUser.id,
         project_id: newProjectId,
         date: dateISO,
         planned_hours: 0,
-        actual_hours: 0,
+        actual_hours: null,
         status: 'pending' as const,
       }
 
