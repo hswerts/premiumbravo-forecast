@@ -403,8 +403,8 @@ export default function TimesheetPage() {
                 <col
                   key={i}
                   style={{
-                    width: '9rem',
-                    backgroundColor: isToday ? '#e0f2fe' : isWeekendDay ? '#f5f5f5' : undefined,
+                    width: isWeekendDay ? '5rem' : '9.5rem',
+                    backgroundColor: isToday ? '#e0f2fe' : isWeekendDay ? '#e5e7eb' : undefined,
                   }}
                 />
               )
@@ -425,7 +425,7 @@ export default function TimesheetPage() {
                 return (
                   <th
                     key={index}
-                    className={`px-2 py-2 text-center text-xs font-medium border-b ${
+                    className={`px-1 py-2 text-center text-xs font-medium border-b ${
                       isToday
                         ? 'bg-blue-100 text-blue-800 font-bold'
                         : isWeekendDay
@@ -444,7 +444,7 @@ export default function TimesheetPage() {
           <tbody className="divide-y divide-gray-200">
             {timesheetRows.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-3 py-8 text-center text-sm text-gray-500">
+                <td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-500">
                   Nenhuma alocação encontrada para este período.
                 </td>
               </tr>
@@ -461,6 +461,8 @@ export default function TimesheetPage() {
                 {row.days.map((day, dayIndex) => {
                   const editable = checkCanEditDate(day.dateISO)
                   const hasDifference = day.actual !== null && day.actual !== day.planned
+                  const dateObj = new Date(day.dateISO)
+                  const isWeekendDay = dateObj.getDay() === 0 || dateObj.getDay() === 6
                   
                   return (
                     <td 
