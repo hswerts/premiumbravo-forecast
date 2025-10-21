@@ -232,11 +232,11 @@ export default function TimesheetPage() {
     base.setHours(0, 0, 0, 0)
     base.setDate(base.getDate() + offset)
 
-    // Gerar 12 dias: hoje -9 até hoje +2
+    // Gerar 11 dias: hoje -9 até hoje +1
     const startDay = new Date(base)
     startDay.setDate(base.getDate() - 9)
 
-    const days: Date[] = Array.from({ length: 12 }, (_, i) => {
+    const days: Date[] = Array.from({ length: 11 }, (_, i) => {
       const d = new Date(startDay)
       d.setDate(startDay.getDate() + i)
       return d
@@ -489,14 +489,14 @@ export default function TimesheetPage() {
                                 onBlur={(e) => {
                                   const val = parseFloat(e.target.value)
                                   if (!isNaN(val) && val > 0) {
-                                    updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
+                                    void updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
                                   }
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = parseFloat(e.currentTarget.value)
                                     if (!isNaN(val) && val > 0) {
-                                      updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
+                                      void updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
                                     }
                                   }
                                 }}
@@ -504,7 +504,7 @@ export default function TimesheetPage() {
                               <button
                                 className="text-xs bg-green-600 text-white px-1.5 py-0.5 rounded hover:bg-green-700 disabled:opacity-50"
                                 disabled={!editable}
-                                onClick={() => confirmDay(row.project.id, day.dateISO, day.planned, day.timesheetId)}
+                                onClick={() => void confirmDay(row.project.id, day.dateISO, day.planned, day.timesheetId)}
                                 title="Confirmar horas planejadas"
                               >
                                 ✓
