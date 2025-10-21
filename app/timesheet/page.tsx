@@ -140,15 +140,15 @@ export default function TimesheetPage() {
 
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    const twoWeeksAgo = new Date(now)
-    twoWeeksAgo.setDate(now.getDate() - 14)
+    const fourWeeksAgo = new Date(now)
+    fourWeeksAgo.setDate(now.getDate() - 28) // 4 semanas para trás
 
     const projectMap = new Map<string, TimesheetRow>()
 
     // Processar assignments
     assignments.forEach(assignment => {
       const assignDate = new Date(assignment.date)
-      if (assignDate < twoWeeksAgo) return
+      if (assignDate < fourWeeksAgo) return
 
       const proj = projects.find(p => p.id === assignment.project_id)
       if (!proj) return
@@ -215,7 +215,7 @@ export default function TimesheetPage() {
 
   useEffect(() => {
     if (currentUser) {
-      generateWeek()
+      generateWeek(0) // Sempre inicia na semana atual
       loadAllData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,21 +248,28 @@ export default function TimesheetPage() {
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const firstDay = currentWeek[0]
+    if (!firstDay) return
+    
     const newFirstDay = new Date(firstDay)
     newFirstDay.setDate(firstDay.getDate() + (direction === 'next' ? 7 : -7))
     
-    const offset = Math.floor((newFirstDay.getTime() - new Date().getTime()) / (7 * 24 * 60 * 60 * 1000))
-    generateWeek(offset)
+    // Calcular offset baseado na diferença para hoje
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffTime = newFirstDay.getTime() - today.getTime()
+    const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000))
+    
+    generateWeek(diffWeeks)
   }
 
   const checkCanEditDate = (dateISO: string): boolean => {
     const date = new Date(dateISO)
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    const twoWeeksAgo = new Date(now)
-    twoWeeksAgo.setDate(now.getDate() - 14)
+    const fourWeeksAgo = new Date(now)
+    fourWeeksAgo.setDate(now.getDate() - 28)
 
-    return date >= twoWeeksAgo && date <= now
+    return date >= fourWeeksAgo && date <= now
   }
 
   const updateTimesheet = async (
@@ -424,36 +431,36 @@ export default function TimesheetPage() {
                       className="px-2 py-2 border-l border-gray-200"
                     >
                       {day.planned > 0 || day.actual !== null ? (
-                        <div className={`p-2 rounded border ${
+                        <div className={`p-1.5 rounded border min-h-[2rem] flex items-center ${
                           day.status === 'confirmed' 
                             ? 'bg-green-50 border-green-200' 
                             : 'bg-yellow-50 border-yellow-200'
                         }`}>
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <span className="text-xs text-gray-600">
-                              Plan: {day.planned}h
-                            </span>
-                            {day.status === 'confirmed' && (
-                              <span className="text-xs text-green-600" title="Confirmado">✓</span>
-                            )}
-                          </div>
-
                           {day.status === 'pending' ? (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
                               <span className="text-yellow-600 text-sm" title="Pendente de confirmação">⚠️</span>
-                              <span className="text-xs text-gray-600">{day.planned}h</span>
+                              <span className="text-xs text-gray-600 whitespace-nowrap">{day.planned}h</span>
                               <input
                                 type="number"
                                 min={0}
                                 max={24}
                                 step={0.5}
                                 placeholder="Real"
+                                defaultValue=""
                                 className="w-12 text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 disabled={!editable}
-                                onChange={(e) => {
+                                onBlur={(e) => {
                                   const val = parseFloat(e.target.value)
-                                  if (!isNaN(val)) {
+                                  if (!isNaN(val) && val > 0) {
                                     updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const val = parseFloat(e.currentTarget.value)
+                                    if (!isNaN(val) && val > 0) {
+                                      updateTimesheet(row.project.id, day.dateISO, val, day.planned, day.timesheetId)
+                                    }
                                   }
                                 }}
                               />
@@ -467,11 +474,12 @@ export default function TimesheetPage() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1">
-                              <span className={`text-xs font-medium ${
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-xs text-green-600" title="Confirmado">✓</span>
+                              <span className={`text-xs font-medium whitespace-nowrap ${
                                 hasDifference ? 'text-orange-600' : 'text-green-700'
                               }`}>
-                                Real: {day.actual}h
+                                {day.actual}h
                               </span>
                               {editable && (
                                 <button
