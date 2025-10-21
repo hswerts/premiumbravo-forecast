@@ -203,7 +203,7 @@ export default function TimesheetPage() {
     })
 
     const rows = Array.from(projectMap.values()).filter(row => 
-      row.days.some(day => day.planned > 0 || day.actual !== null)
+      row.days.some(day => day.planned > 0 || day.actual !== null || day.actual === 0)
     )
 
     setTimesheetRows(rows)
@@ -349,17 +349,17 @@ export default function TimesheetPage() {
       today.setHours(0, 0, 0, 0)
       const dateISO = today.toISOString().split('T')[0]
 
-      // Verificar se já existe timesheet para este projeto/pessoa/data
-      const { data: existing } = await supabase
-        .from('timesheets')
-        .select('id')
-        .eq('person_id', currentUser.id)
-        .eq('project_id', newProjectId)
-        .eq('date', dateISO)
-        .single()
+      // Verificar se já existe timesheet OU se o projeto já está nas rows
+      const existsInTimesheets = timesheets.some(
+        ts => ts.project_id === newProjectId && ts.date === dateISO
+      )
+      
+      const existsInRows = timesheetRows.some(
+        row => row.project.id === newProjectId
+      )
 
-      if (existing) {
-        alert('Este projeto já está no seu timesheet para hoje.')
+      if (existsInTimesheets || existsInRows) {
+        alert('Este projeto já está no seu timesheet.')
         setNewProjectId('')
         return
       }
@@ -380,14 +380,9 @@ export default function TimesheetPage() {
 
       if (error) throw error
 
-      // Recarregar timesheets e forçar rebuild da tabela
+      // Recarregar timesheets
       await loadTimesheets()
       setNewProjectId('')
-      
-      // Pequeno delay para garantir que o estado foi atualizado
-      setTimeout(() => {
-        buildTimesheetRows()
-      }, 100)
     } catch (error: unknown) {
       console.error('Erro ao adicionar projeto:', error)
       const errorMessage = error instanceof Error ? error.message : 'Tente novamente.'
