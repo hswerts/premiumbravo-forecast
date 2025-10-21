@@ -249,18 +249,22 @@ export default function TimesheetPage() {
     const firstDay = currentWeek[0]
     if (!firstDay) return
     
-    const newFirstDay = new Date(firstDay)
     // Mover 1 dia de cada vez
+    const newFirstDay = new Date(firstDay)
     newFirstDay.setDate(firstDay.getDate() + (direction === 'next' ? 1 : -1))
     
     // Calcular offset baseado na diferença para hoje
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    
+    // Calcular quantos dias o primeiro dia está em relação a hoje
     const diffTime = newFirstDay.getTime() - today.getTime()
     const diffDays = Math.round(diffTime / (24 * 60 * 60 * 1000))
     
-    // O offset é a diferença em dias + 9 (porque começamos 9 dias atrás)
-    generateWeek(diffDays + 9)
+    // O offset precisa considerar que começamos 8 dias atrás
+    // Se o primeiro dia é hoje-8, o offset deve ser 0
+    // Se o primeiro dia é hoje-7, o offset deve ser 1, etc
+    generateWeek(diffDays + 8)
   }
 
   const goToToday = () => {
@@ -444,7 +448,7 @@ export default function TimesheetPage() {
           <tbody className="divide-y divide-gray-200">
             {timesheetRows.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-500">
+                <td colSpan={11} className="px-3 py-8 text-center text-sm text-gray-500">
                   Nenhuma alocação encontrada para este período.
                 </td>
               </tr>
