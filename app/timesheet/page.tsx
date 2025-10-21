@@ -49,11 +49,6 @@ interface TimesheetRow {
   }[]
 }
 
-const isWeekend = (d: Date) => {
-  const dow = d.getDay()
-  return dow === 0 || dow === 6
-}
-
 export default function TimesheetPage() {
   const [currentUser, setCurrentUser] = useState<Person | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
