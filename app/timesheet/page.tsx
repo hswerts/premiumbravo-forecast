@@ -232,11 +232,11 @@ export default function TimesheetPage() {
     base.setHours(0, 0, 0, 0)
     base.setDate(base.getDate() + offset)
 
-    // Gerar 11 dias: hoje -9 até hoje +1
+    // Gerar 10 dias: hoje -8 até hoje +1
     const startDay = new Date(base)
-    startDay.setDate(base.getDate() - 9)
+    startDay.setDate(base.getDate() - 8)
 
-    const days: Date[] = Array.from({ length: 11 }, (_, i) => {
+    const days: Date[] = Array.from({ length: 10 }, (_, i) => {
       const d = new Date(startDay)
       d.setDate(startDay.getDate() + i)
       return d
@@ -429,7 +429,7 @@ export default function TimesheetPage() {
                       isToday
                         ? 'bg-blue-100 text-blue-800 font-bold'
                         : isWeekendDay
-                        ? 'bg-gray-100 text-gray-500'
+                        ? 'bg-gray-200 text-gray-600'
                         : 'bg-gray-50 text-gray-700'
                     }`}
                   >
