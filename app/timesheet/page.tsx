@@ -364,12 +364,13 @@ export default function TimesheetPage() {
         return
       }
 
+      // Criar timesheet com actual_hours = 0 para aparecer na tela
       const payload = {
         person_id: currentUser.id,
         project_id: newProjectId,
         date: dateISO,
         planned_hours: 0,
-        actual_hours: null,
+        actual_hours: 0,
         status: 'pending' as const,
       }
 
@@ -379,8 +380,14 @@ export default function TimesheetPage() {
 
       if (error) throw error
 
+      // Recarregar timesheets e forçar rebuild da tabela
       await loadTimesheets()
       setNewProjectId('')
+      
+      // Pequeno delay para garantir que o estado foi atualizado
+      setTimeout(() => {
+        buildTimesheetRows()
+      }, 100)
     } catch (error: unknown) {
       console.error('Erro ao adicionar projeto:', error)
       const errorMessage = error instanceof Error ? error.message : 'Tente novamente.'
