@@ -11,6 +11,8 @@ type ProjectType =
   | 'Projetos Especiais'
   | 'Outros';
 
+type ProjectStatus = 'Aberto' | 'Fechado';
+
 interface Project {
   id: string;
   code: string;
@@ -18,9 +20,9 @@ interface Project {
   client_name?: string | null;
   budget_hours?: number | null;
   budget_value?: number | null;
-  status: string;
+  status: ProjectStatus;
   project_type?: ProjectType | null;
-  deadline?: string | null;   // YYYY-MM-DD
+  deadline?: string | null;   // ISO 'YYYY-MM-DD' no banco
   manager_id?: string | null; // FK -> people.id
 }
 
@@ -37,15 +39,18 @@ const TYPE_OPTIONS: ProjectType[] = [
   'Outros',
 ];
 
-function toDateInputValue(d?: string | null) {
-  if (!d) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return '';
-  const yyyy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+// helpers de data
+function isoToBR(iso?: string | null) {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+function brToISO(br?: string) {
+  if (!br) return null;
+  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
 export default function ProjectsPage() {
@@ -56,14 +61,17 @@ export default function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null);
 
   const [form, setForm] = useState({
+    // linha 1
     code: '',
     name: '',
     clientName: '',
+    // linha 2
     budgetHours: '',
     budgetValue: '',
-    status: 'planned',
+    status: 'Aberto' as ProjectStatus,
+    // linha 3
     projectType: '' as '' | ProjectType,
-    deadline: '',
+    deadlineBr: '', // dd/mm/aaaa na UI
     managerId: '',
   });
 
@@ -78,13 +86,8 @@ export default function ProjectsPage() {
       if (error) throw error;
       setProjects((data ?? []) as Project[]);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error('Erro ao carregar projects:', err.message);
-        alert(`Erro ao carregar projects: ${err.message}`);
-      } else {
-        console.error('Erro ao carregar projects:', err);
-        alert('Erro ao carregar projects.');
-      }
+      if (err instanceof Error) alert(`Erro ao carregar projects: ${err.message}`);
+      console.error(err);
     }
   }, []);
 
@@ -98,7 +101,7 @@ export default function ProjectsPage() {
       if (error) throw error;
       setPeople((data ?? []) as Person[]);
     } catch (err: unknown) {
-      console.error('Erro ao carregar people:', err);
+      console.error(err);
     }
   }, []);
 
@@ -121,9 +124,9 @@ export default function ProjectsPage() {
       clientName: '',
       budgetHours: '',
       budgetValue: '',
-      status: 'planned',
+      status: 'Aberto',
       projectType: '',
-      deadline: '',
+      deadlineBr: '',
       managerId: '',
     });
   };
@@ -144,9 +147,9 @@ export default function ProjectsPage() {
       clientName: p.client_name ?? '',
       budgetHours: p.budget_hours != null ? String(p.budget_hours) : '',
       budgetValue: p.budget_value != null ? String(p.budget_value) : '',
-      status: p.status ?? 'planned',
+      status: (p.status ?? 'Aberto') as ProjectStatus,
       projectType: (p.project_type ?? '') as '' | ProjectType,
-      deadline: toDateInputValue(p.deadline),
+      deadlineBr: isoToBR(p.deadline),
       managerId: p.manager_id ?? '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -168,14 +171,11 @@ export default function ProjectsPage() {
       form.budgetValue.trim() === ''
         ? null
         : Number(form.budgetValue.replace(',', '.'));
-
     if (budget_hours != null && (Number.isNaN(budget_hours) || budget_hours < 0)) {
-      alert('Horas previstas inválidas.');
-      return;
+      alert('Horas previstas inválidas.'); return;
     }
     if (budget_value != null && (Number.isNaN(budget_value) || budget_value < 0)) {
-      alert('Valor previsto inválido.');
-      return;
+      alert('Valor previsto inválido.'); return;
     }
 
     const payload = {
@@ -184,20 +184,16 @@ export default function ProjectsPage() {
       client_name: form.clientName.trim() || null,
       budget_hours,
       budget_value,
-      status: form.status.trim() || 'planned',
+      status: form.status, // 'Aberto' | 'Fechado'
       project_type: form.projectType || null,
-      deadline: form.deadline || null,      // YYYY-MM-DD
+      deadline: brToISO(form.deadlineBr),   // converte para ISO
       manager_id: form.managerId || null,
     };
 
     setLoading(true);
     try {
       if (editing) {
-        const { error } = await supabase
-          .from('projects')
-          .update(payload)
-          .eq('id', editing.id);
-
+        const { error } = await supabase.from('projects').update(payload).eq('id', editing.id);
         if (error) throw error;
         alert('Projeto atualizado com sucesso!');
       } else {
@@ -209,23 +205,32 @@ export default function ProjectsPage() {
       resetForm();
       setShowForm(true);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error('Erro ao salvar projeto:', err.message);
-        alert(`Erro ao salvar projeto: ${err.message}`);
-      } else {
-        console.error('Erro ao salvar projeto:', err);
-        alert('Erro ao salvar projeto.');
-      }
+      if (err instanceof Error) alert(`Erro ao salvar projeto: ${err.message}`);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  // badge de status na lista
+  const StatusBadge = ({ value }: { value: ProjectStatus }) => (
+    <span
+      className={
+        'px-2 py-1 text-xs rounded-full ' +
+        (value === 'Aberto'
+          ? 'bg-green-100 text-green-800'
+          : 'bg-red-100 text-red-800')
+      }
+    >
+      {value}
+    </span>
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
-          Projetos PremiumBravo <small className="ml-2 text-xs text-gray-500">v2</small>
+          Projetos PremiumBravo <small className="ml-2 text-xs text-gray-500">v3</small>
         </h1>
         <button
           className="px-4 py-2 rounded-lg bg-blue-600 text-white"
@@ -245,11 +250,11 @@ export default function ProjectsPage() {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* grade 3 colunas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* linha 1 */}
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Código (4 números) *
-                </label>
+                <label className="block text-sm font-medium mb-1">Código *</label>
                 <input
                   type="text"
                   name="code"
@@ -261,11 +266,8 @@ export default function ProjectsPage() {
                   required
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Nome do Projeto *
-                </label>
+                <label className="block text-sm font-medium mb-1">Nome do Projeto *</label>
                 <input
                   type="text"
                   name="name"
@@ -276,7 +278,6 @@ export default function ProjectsPage() {
                   required
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-1">Cliente</label>
                 <input
@@ -289,10 +290,9 @@ export default function ProjectsPage() {
                 />
               </div>
 
+              {/* linha 2 */}
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Horas Previstas
-                </label>
+                <label className="block text-sm font-medium mb-1">Horas Previstas</label>
                 <input
                   type="number"
                   step="0.1"
@@ -304,11 +304,8 @@ export default function ProjectsPage() {
                   onChange={handleChange}
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Valor Total (R$)
-                </label>
+                <label className="block text-sm font-medium mb-1">Valor Total (R$)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -320,24 +317,22 @@ export default function ProjectsPage() {
                   onChange={handleChange}
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>
-                <input
-                  type="text"
+                <select
                   name="status"
                   className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Ex: planned / active / paused / closed"
                   value={form.status}
                   onChange={handleChange}
-                />
+                >
+                  <option value="Aberto">Aberto</option>
+                  <option value="Fechado">Fechado</option>
+                </select>
               </div>
 
-              {/* NOVOS CAMPOS */}
+              {/* linha 3 */}
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Tipo do Projeto
-                </label>
+                <label className="block text-sm font-medium mb-1">Tipo do Projeto</label>
                 <select
                   name="projectType"
                   className="w-full border rounded-lg px-3 py-2"
@@ -346,30 +341,26 @@ export default function ProjectsPage() {
                 >
                   <option value="">Selecione…</option>
                   {TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
+                    <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Prazo final
+                  Prazo final (dd/mm/aaaa)
                 </label>
                 <input
-                  type="date"
-                  name="deadline"
+                  type="text"
+                  name="deadlineBr"
                   className="w-full border rounded-lg px-3 py-2"
-                  value={form.deadline}
+                  placeholder="dd/mm/aaaa"
+                  value={form.deadlineBr}
                   onChange={handleChange}
+                  pattern="^\d{2}/\d{2}/\d{4}$"
                 />
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">
-                  Gestor (people)
-                </label>
+              <div>
+                <label className="block text-sm font-medium mb-1">Gestor (people)</label>
                 <select
                   name="managerId"
                   className="w-full border rounded-lg px-3 py-2"
@@ -378,9 +369,7 @@ export default function ProjectsPage() {
                 >
                   <option value="">Selecione…</option>
                   {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name}
-                    </option>
+                    <option key={p.id} value={p.id}>{p.full_name}</option>
                   ))}
                 </select>
               </div>
@@ -397,10 +386,7 @@ export default function ProjectsPage() {
               <button
                 type="button"
                 className="px-4 py-2 rounded-lg bg-gray-500 text-white"
-                onClick={() => {
-                  resetForm();
-                  setShowForm(false);
-                }}
+                onClick={() => { resetForm(); setShowForm(false); }}
               >
                 Cancelar
               </button>
@@ -439,21 +425,14 @@ export default function ProjectsPage() {
                 <td className="p-3">{p.code}</td>
                 <td className="p-3">{p.name}</td>
                 <td className="p-3">{p.client_name ?? '—'}</td>
-                <td className="p-3 text-right">
-                  {p.budget_hours != null ? p.budget_hours : '—'}
-                </td>
-                <td className="p-3 text-right">
-                  {p.budget_value != null ? p.budget_value : '—'}
-                </td>
-                <td className="p-3">{p.status}</td>
+                <td className="p-3 text-right">{p.budget_hours ?? '—'}</td>
+                <td className="p-3 text-right">{p.budget_value ?? '—'}</td>
+                <td className="p-3"><StatusBadge value={p.status} /></td>
                 <td className="p-3">{p.project_type ?? '—'}</td>
-                <td className="p-3">{toDateInputValue(p.deadline) || '—'}</td>
+                <td className="p-3">{isoToBR(p.deadline) || '—'}</td>
                 <td className="p-3">{p.manager_id ? (peopleDict[p.manager_id] ?? p.manager_id) : '—'}</td>
                 <td className="p-3">
-                  <button
-                    className="text-blue-600 underline"
-                    onClick={() => startEdit(p)}
-                  >
+                  <button className="text-blue-600 underline" onClick={() => startEdit(p)}>
                     Editar
                   </button>
                 </td>
