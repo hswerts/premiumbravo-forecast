@@ -497,7 +497,7 @@ export default function TimesheetPage() {
                   const editable = checkCanEditDate(day.dateISO)
                   const hasDifference = day.actual !== null && day.actual !== day.planned
                   const dateObj = new Date(day.dateISO)
-                  const isWeekendDay = dateObj.getDay() === 0 || dateObj.getDay() === 6
+                  //const isWeekendDay = dateObj.getDay() === 0 || dateObj.getDay() === 6
                   
                   return (
                     <td 
