@@ -31,8 +31,8 @@ export default function ProtectedLayout({
               <a href="/timesheet" className="hover:text-premiumbravo-light transition-colors font-medium">
                 Timesheet
               </a>
-              <a href="/relations" className="hover:text-premiumbravo-light transition-colors font-medium">
-                Relations
+              <a href="/reports" className="hover:text-premiumbravo-light transition-colors font-medium">
+                Relatorios
               </a>
             </div>
 
