@@ -1,10 +1,8 @@
 "use client"
 import { signIn } from "next-auth/react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [code, setCode] = useState("")
   const [pin, setPin] = useState("")
   const [loading, setLoading] = useState(false)
@@ -28,8 +26,6 @@ export default function LoginPage() {
         pin: pin.trim(),
         redirect: false,
       })
-
-      console.log("Login result:", result) // Para debug
 
       if (result?.error) {
         setErrorMsg("Código ou PIN inválidos.")
@@ -90,7 +86,6 @@ export default function LoginPage() {
               <input
                 value={code}
                 onChange={(e) => {
-                  // Permite apenas números
                   const value = e.target.value.replace(/\D/g, '')
                   setCode(value)
                   setErrorMsg("")
@@ -113,7 +108,6 @@ export default function LoginPage() {
                 <input
                   value={pin}
                   onChange={(e) => {
-                    // Permite apenas números para o PIN
                     const value = e.target.value.replace(/\D/g, '')
                     setPin(value)
                     setErrorMsg("")
