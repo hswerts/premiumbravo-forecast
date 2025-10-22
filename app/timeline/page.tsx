@@ -10,6 +10,7 @@ interface Project {
   name: string
   budget_hours?: number
   budget_value?: number
+  project_type?: string
 }
 
 interface Person {
@@ -38,6 +39,26 @@ const isWeekend = (d: Date) => {
 
 const mustWarn = (d: Date, totalHoursForCell: number) => {
   return isWeekend(d) ? totalHoursForCell > 0 : totalHoursForCell > 8
+}
+
+// Função para obter estilos baseados no tipo de projeto
+const getProjectTypeStyles = (projectType: string | null | undefined) => {
+  if (!projectType) return 'bg-gray-100 border-gray-300 text-gray-700'
+  
+  switch (projectType) {
+    case 'Auditoria Interna':
+      return 'bg-blue-100 border-blue-300 text-blue-700'
+    case 'Inventários':
+      return 'bg-red-100 border-red-300 text-red-700'
+    case 'CVM 88':
+      return 'bg-orange-100 border-orange-300 text-orange-700'
+    case 'Projetos Especiais':
+      return 'bg-yellow-100 border-yellow-300 text-yellow-700'
+    case 'Outros':
+      return 'bg-green-100 border-green-300 text-green-700'
+    default:
+      return 'bg-gray-100 border-gray-300 text-gray-700'
+  }
 }
 
 export default function TimelinePage() {
@@ -397,7 +418,7 @@ export default function TimelinePage() {
           {projects.map((project) => (
             <div
               key={project.id}
-              className="bg-green-100 border border-green-300 rounded px-3 py-1.5 text-xs cursor-move hover:bg-green-200 transition-colors"
+              className={`border rounded px-3 py-1.5 text-xs cursor-move hover:opacity-80 transition-all ${getProjectTypeStyles(project.project_type)}`}
               draggable
               onDragStart={() => handleDragStart(project.id)}
             >
@@ -487,7 +508,7 @@ export default function TimelinePage() {
                             return (
                               <div
                                 key={assignment.id}
-                                className="bg-green-100 border border-green-300 rounded px-2 py-1 mb-1 text-xs"
+                                className={`border rounded px-2 py-1 mb-1 text-xs ${getProjectTypeStyles(project?.project_type)}`}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   <span className="text-[11px] font-medium truncate min-w-0 flex-1"
@@ -540,6 +561,7 @@ export default function TimelinePage() {
           <li>• <strong>Clique no ×</strong> para remover uma alocação</li>
           <li>• <strong>Vermelho</strong> indica: dias úteis &gt; 8h, ou qualquer hora no fim de semana</li>
           <li>• <strong>Dados salvos automaticamente</strong> no banco de dados</li>
+          <li>• <strong>Cores dos projetos</strong> indicam o tipo: Azul=Auditoria, Vermelho=Inventários, Laranja=CVM88, Amarelo=Especiais, Verde=Outros</li>
         </ul>
       </div>
 
