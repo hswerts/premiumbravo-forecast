@@ -64,8 +64,10 @@ export default function ReportsPage() {
 
       if (error) throw error
       setProjects(data || [])
+      return data || []
     } catch (error) {
       console.error('Erro ao carregar projetos:', error)
+      return []
     }
   }, [])
 
@@ -77,8 +79,10 @@ export default function ReportsPage() {
 
       if (error) throw error
       setAssignments(data || [])
+      return data || []
     } catch (error) {
       console.error('Erro ao carregar assignments:', error)
+      return []
     }
   }, [])
 
@@ -91,26 +95,44 @@ export default function ReportsPage() {
 
       if (error) throw error
       setTimesheets(data || [])
+      return data || []
     } catch (error) {
       console.error('Erro ao carregar timesheets:', error)
+      return []
     }
   }, [])
 
   const loadAllData = useCallback(async () => {
     setLoading(true)
-    await Promise.all([loadProjects(), loadAssignments(), loadTimesheets()])
-    setLoading(false)
+    try {
+      const [projectsData, assignmentsData, timesheetsData] = await Promise.all([
+        loadProjects(),
+        loadAssignments(),
+        loadTimesheets()
+      ])
+      
+      // Calcular relatórios imediatamente após carregar os dados
+      calculateProjectReports(projectsData, assignmentsData, timesheetsData)
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
+    } finally {
+      setLoading(false)
+    }
   }, [loadProjects, loadAssignments, loadTimesheets])
 
-  // Calcular relatórios quando projetos, assignments e timesheets forem carregados
-  const calculateProjectReports = useCallback(() => {
-    const reports: ProjectReport[] = projects.map(project => {
+  // Calcular relatórios
+  const calculateProjectReports = useCallback((
+    projectsData: Project[], 
+    assignmentsData: Assignment[], 
+    timesheetsData: Timesheet[]
+  ) => {
+    const reports: ProjectReport[] = projectsData.map(project => {
       // Calcular horas alocadas para este projeto
-      const projectAssignments = assignments.filter(a => a.project_id === project.id)
+      const projectAssignments = assignmentsData.filter(a => a.project_id === project.id)
       const totalAssignedHours = projectAssignments.reduce((sum, assignment) => sum + assignment.hours, 0)
       
       // Calcular horas usadas (confirmadas) para este projeto
-      const projectTimesheets = timesheets.filter(t => t.project_id === project.id)
+      const projectTimesheets = timesheetsData.filter(t => t.project_id === project.id)
       const totalUsedHours = projectTimesheets.reduce((sum, timesheet) => sum + (timesheet.actual_hours || 0), 0)
       
       const totalBudgetHours = project.budget_hours || 0
@@ -137,20 +159,14 @@ export default function ReportsPage() {
       }
     })
 
+    console.log('Relatórios calculados:', reports)
     setProjectReports(reports)
-  }, [projects, assignments, timesheets])
+  }, [])
 
   // Carregar dados iniciais
   useEffect(() => {
     loadAllData()
   }, [loadAllData])
-
-  // Calcular relatórios quando projetos, assignments e timesheets forem carregados
-  useEffect(() => {
-    if (projects.length > 0 && assignments.length > 0 && timesheets.length >= 0) {
-      calculateProjectReports()
-    }
-  }, [calculateProjectReports, projects, assignments, timesheets])
 
   // Função para ordenação
   const handleSort = (field: SortField) => {
@@ -233,10 +249,8 @@ export default function ReportsPage() {
     )
   }
 
-  // ... (restante do JSX permanece igual)
   return (
     <div className="container mx-auto p-6">
-      {/* O restante do seu JSX aqui - mantive igual pois não foi modificado */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Relatórios de Projetos</h1>
         <button
@@ -287,11 +301,284 @@ export default function ReportsPage() {
                   )}
                 </div>
               </th>
-              {/* ... outros cabeçalhos de coluna ... */}
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('totalBudgetHours')}
+              >
+                <div className="flex items-center justify-center">
+                  Horas Orçadas
+                  {sortField === 'totalBudgetHours' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('totalAssignedHours')}
+              >
+                <div className="flex items-center justify-center">
+                  Horas Alocadas
+                  {sortField === 'totalAssignedHours' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('totalUsedHours')}
+              >
+                <div className="flex items-center justify-center">
+                  Horas Usadas
+                  {sortField === 'totalUsedHours' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('remainingToAllocate')}
+              >
+                <div className="flex items-center justify-center">
+                  Horas a Alocar
+                  {sortField === 'remainingToAllocate' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('remainingToUse')}
+              >
+                <div className="flex items-center justify-center">
+                  Horas a Usar
+                  {sortField === 'remainingToUse' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('allocatedPercentage')}
+              >
+                <div className="flex items-center justify-center">
+                  % Alocado
+                  {sortField === 'allocatedPercentage' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('usedPercentage')}
+              >
+                <div className="flex items-center justify-center">
+                  % Usado
+                  {sortField === 'usedPercentage' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('status')}
+              >
+                <div className="flex items-center justify-center">
+                  Status
+                  {sortField === 'status' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
             </tr>
           </thead>
-          {/* ... restante da tabela ... */}
+          <tbody className="divide-y divide-gray-200">
+            {sortedReports.map((report) => (
+              <tr key={report.project.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {report.project.code} - {report.project.name}
+                      </div>
+                      {report.project.client_name && (
+                        <div className="text-sm text-gray-500">
+                          {report.project.client_name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className="text-sm font-medium text-gray-900">
+                    {report.totalBudgetHours}h
+                  </span>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className="text-sm font-medium text-green-600">
+                    {report.totalAssignedHours}h
+                  </span>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className="text-sm font-medium text-purple-600">
+                    {report.totalUsedHours}h
+                  </span>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className={`text-sm font-medium ${
+                    report.remainingToAllocate > 0 ? 'text-orange-600' : 'text-green-600'
+                  }`}>
+                    {report.remainingToAllocate}h
+                  </span>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className={`text-sm font-medium ${
+                    report.remainingToUse > 0 ? 'text-blue-600' : 'text-red-600'
+                  }`}>
+                    {report.remainingToUse}h
+                  </span>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-24">
+                      <div 
+                        className={`h-2.5 rounded-full ${
+                          report.allocatedPercentage >= 100 ? 'bg-green-600' :
+                          report.allocatedPercentage >= 75 ? 'bg-blue-600' :
+                          report.allocatedPercentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(report.allocatedPercentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {report.allocatedPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-24">
+                      <div 
+                        className={`h-2.5 rounded-full ${
+                          report.usedPercentage >= 100 ? 'bg-red-600' :
+                          report.usedPercentage >= 75 ? 'bg-orange-500' :
+                          report.usedPercentage >= 50 ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(report.usedPercentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {report.usedPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </td>
+                
+                <td className="px-6 py-4 text-center">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    report.usedPercentage >= 100 ? 'bg-red-100 text-red-800' :
+                    report.allocatedPercentage >= 100 ? 'bg-green-100 text-green-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {report.usedPercentage >= 100 ? 'Esgotado' :
+                     report.allocatedPercentage >= 100 ? 'Totalmente Alocado' : 'Em Andamento'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            
+            {sortedReports.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
+                  Nenhum projeto encontrado
+                </td>
+              </tr>
+            )}
+          </tbody>
+          
+          {/* Footer com totais */}
+          <tfoot className="bg-gray-50">
+            <tr>
+              <td className="px-6 py-4 text-sm font-semibold text-gray-900">TOTAIS</td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                {totalBudget}h
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-green-600">
+                {totalAssigned}h
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-purple-600">
+                {totalUsed}h
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-orange-600">
+                {totalRemainingToAllocate}h
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-blue-600">
+                {totalRemainingToUse}h
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                {totalBudget > 0 ? ((totalAssigned / totalBudget) * 100).toFixed(1) : 0}%
+              </td>
+              <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                {totalBudget > 0 ? ((totalUsed / totalBudget) * 100).toFixed(1) : 0}%
+              </td>
+              <td className="px-6 py-4 text-center"></td>
+            </tr>
+          </tfoot>
         </table>
+      </div>
+
+      {/* Legenda */}
+      <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+        <h3 className="font-semibold text-blue-800 mb-2">Legenda:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+          <div>
+            <h4 className="font-medium mb-1">% Alocado (Quanto maior, melhor):</h4>
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                <span>100% alocado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                <span>75-99% alocado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                <span>50-74% alocado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                <span>0-49% alocado</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-medium mb-1">% Usado (Quanto menor, melhor):</h4>
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                <span>0-49% usado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                <span>50-74% usado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                <span>75-99% usado</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                <span>100%+ usado</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
