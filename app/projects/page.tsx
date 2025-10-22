@@ -293,6 +293,35 @@ export default function ProjectsPage() {
     </span>
   );
 
+  const TypeBadge = ({ value }: { value: ProjectType | null | undefined }) => {
+    if (!value) return <span className="text-gray-400">—</span>;
+    
+    const getTypeStyles = (type: ProjectType) => {
+      switch (type) {
+        case 'Auditoria Interna':
+          return 'bg-blue-100 text-blue-700 border border-blue-200';
+        case 'Inventários':
+          return 'bg-red-100 text-red-700 border border-red-200';
+        case 'CVM 88':
+          return 'bg-orange-100 text-orange-700 border border-orange-200';
+        case 'Projetos Especiais':
+          return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+        case 'Outros':
+          return 'bg-green-100 text-green-700 border border-green-200';
+        default:
+          return 'bg-gray-100 text-gray-700 border border-gray-200';
+      }
+    };
+
+    return (
+      <span
+        className={`px-2 py-0.5 text-[11px] font-medium rounded ${getTypeStyles(value)}`}
+      >
+        {value}
+      </span>
+    );
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -491,7 +520,7 @@ export default function ProjectsPage() {
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">{fmtHoras(p.budget_hours)}</td>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">{fmtMoeda(p.budget_value)}</td>
                     <td className="px-3 py-2"><StatusBadge value={p.statusUi} /></td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{p.project_type ?? '—'}</td>
+                    <td className="px-3 py-2"><TypeBadge value={p.project_type} /></td>
                     <td className="px-3 py-2 text-sm text-gray-600">{isoToBR(p.deadline) || '—'}</td>
                     <td className="px-3 py-2 text-sm text-gray-600">{gestor}</td>
                     <td className="px-3 py-2">
