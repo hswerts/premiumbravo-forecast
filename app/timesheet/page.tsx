@@ -206,9 +206,7 @@ export default function TimesheetPage() {
       }
     })
 
-    const rows = Array.from(projectMap.values()).filter(row => 
-      row.days.some(day => day.planned > 0 || day.actual !== null)
-    )
+    const rows = Array.from(projectMap.values())
 
     setTimesheetRows(rows)
   }
@@ -350,6 +348,10 @@ export default function TimesheetPage() {
     }
 
     await updateTimesheet(selectedExtraProject, dateISO, hours, 0)
+  }
+
+  const addHoursToEmptyCell = async (projectId: string, dateISO: string, hours: number) => {
+    await updateTimesheet(projectId, dateISO, hours, 0)
   }
 
   const formatDate = (date: Date) => {
@@ -573,7 +575,34 @@ export default function TimesheetPage() {
                           )}
                         </div>
                       ) : (
-                        <div className="p-2 text-center text-xs text-gray-400">—</div>
+                        // Célula vazia - agora aceita horas
+                        <div className="p-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={24}
+                            step={0.5}
+                            placeholder="Horas"
+                            className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            disabled={!editable}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value)
+                              if (!isNaN(val) && val > 0) {
+                                void addHoursToEmptyCell(row.project.id, day.dateISO, val)
+                                e.target.value = ''
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const val = parseFloat(e.currentTarget.value)
+                                if (!isNaN(val) && val > 0) {
+                                  void addHoursToEmptyCell(row.project.id, day.dateISO, val)
+                                  e.currentTarget.value = ''
+                                }
+                              }
+                            }}
+                          />
+                        </div>
                       )}
                     </td>
                   )
@@ -677,7 +706,8 @@ export default function TimesheetPage() {
           <li>• <strong>Verde:</strong> Horas confirmadas</li>
           <li>• <strong>Botão ✓:</strong> Confirmar as horas planejadas</li>
           <li>• <strong>Campo &quot;Real&quot;:</strong> Digitar horas diferentes do planejado</li>
-          <li>• <strong>Linha Azul:</strong> Adicionar horas em projetos não programados</li>
+          <li>• <strong>Células vazias:</strong> Digite horas para projetos em dias não programados</li>
+          <li>• <strong>Linha Azul:</strong> Adicionar horas em projetos não listados</li>
           <li>• <strong>Linha Cinza Escuro:</strong> Total de horas por dia</li>
           <li>• <strong>Você pode editar timesheets de até 4 semanas atrás</strong></li>
         </ul>
