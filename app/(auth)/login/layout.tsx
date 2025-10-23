@@ -1,13 +1,11 @@
-export default function LoginLayout({
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
-      <body className="min-h-screen">
-        {children}
-      </body>
-    </html>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      {children}
+    </div>
   )
 }
