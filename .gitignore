@@ -26,3 +26,15 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# OneDrive e sincronização (IMPORTANTE!)
+desktop.ini
+Thumbs.db
+*.tmp
+~$*
+
+# Cache adicional
+.cache/
+.turbo/
+*.swp
+*.swo
