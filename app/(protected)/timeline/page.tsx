@@ -1,4 +1,4 @@
-// app/timeline/page.tsx
+// app/timeline/page.tsx - VERSÃO MINIMALISTA
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -31,7 +31,7 @@ interface Assignment {
   created_at?: string
 }
 
-/* ===== Helpers ===== */
+/* ===== Helpers de data/visual ===== */
 const isWeekend = (d: Date) => {
   const dow = d.getDay()
   return dow === 0 || dow === 6
@@ -41,22 +41,43 @@ const mustWarn = (d: Date, totalHoursForCell: number) => {
   return isWeekend(d) ? totalHoursForCell > 0 : totalHoursForCell > 8
 }
 
+// Função para obter estilos baseados no tipo de projeto - VERSÃO MINIMALISTA
 const getProjectTypeStyles = (projectType: string | null | undefined) => {
-  if (!projectType) return 'bg-gray-100 text-gray-700 border-l-4 border-l-gray-400'
+  if (!projectType) return 'bg-gray-50 text-gray-700 border-gray-200'
   
   switch (projectType) {
     case 'Auditoria Interna':
-      return 'bg-blue-50 text-blue-800 border-l-4 border-l-blue-500'
+      return 'bg-blue-50 text-blue-700 border-blue-200'
     case 'Inventários':
-      return 'bg-red-50 text-red-800 border-l-4 border-l-red-500'
+      return 'bg-red-50 text-red-700 border-red-200'
     case 'CVM 88':
-      return 'bg-orange-50 text-orange-800 border-l-4 border-l-orange-500'
+      return 'bg-orange-50 text-orange-700 border-orange-200'
     case 'Projetos Especiais':
-      return 'bg-yellow-50 text-yellow-800 border-l-4 border-l-yellow-500'
+      return 'bg-yellow-50 text-yellow-700 border-yellow-200'
     case 'Outros':
-      return 'bg-green-50 text-green-800 border-l-4 border-l-green-500'
+      return 'bg-green-50 text-green-700 border-green-200'
     default:
-      return 'bg-gray-100 text-gray-700 border-l-4 border-l-gray-400'
+      return 'bg-gray-50 text-gray-700 border-gray-200'
+  }
+}
+
+// Estilos para badges pequenos e compactos
+const getProjectBadgeStyles = (projectType: string | null | undefined) => {
+  if (!projectType) return 'text-gray-700'
+  
+  switch (projectType) {
+    case 'Auditoria Interna':
+      return 'text-blue-600'
+    case 'Inventários':
+      return 'text-red-600'
+    case 'CVM 88':
+      return 'text-orange-600'
+    case 'Projetos Especiais':
+      return 'text-yellow-700'
+    case 'Outros':
+      return 'text-green-600'
+    default:
+      return 'text-gray-700'
   }
 }
 
@@ -68,7 +89,7 @@ export default function TimelinePage() {
   const [draggingProject, setDraggingProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Menu contextual
+  // === Menu contextual ===
   type CtxMenu = {
     show: boolean
     x: number
@@ -221,189 +242,146 @@ export default function TimelinePage() {
 
   const generateWeek = (offset: number = 0) => {
     const base = new Date()
-    base.setHours(0, 0, 0, 0)
-    base.setDate(base.getDate() + offset * 7)
+    const d = new Date(base)
+    d.setDate(d.getDate() + 7 * offset)
 
-    const sunday = new Date(base)
-    const dow = sunday.getDay()
-    sunday.setDate(sunday.getDate() - dow)
+    const start = new Date(d)
+    const day = start.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    start.setDate(start.getDate() + diff)
 
-    const week: Date[] = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(sunday)
-      d.setDate(sunday.getDate() + i)
-      return d
-    })
-
+    const week: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      const nextDay = new Date(start)
+      nextDay.setDate(start.getDate() + i)
+      week.push(nextDay)
+    }
     setCurrentWeek(week)
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit',
-      weekday: 'short'
-    })
-  }
-
-  const getTotalHoursPerDay = (personId: string, date: string) => {
-    const dayAssignments = assignments.filter(a => 
-      a.person_id === personId && a.date === date
-    )
-    return dayAssignments.reduce((total, assignment) => total + assignment.hours, 0)
-  }
-
-  const handleAssignment = async (projectId: string, personId: string, date: string, hours: number = 8) => {
-    const existingAssignmentIndex = assignments.findIndex(a => 
-      a.person_id === personId && 
-      a.project_id === projectId && 
-      a.date === date
-    )
-
-    let updatedAssignments: Assignment[]
-
-    if (existingAssignmentIndex !== -1) {
-      updatedAssignments = [...assignments]
-      updatedAssignments[existingAssignmentIndex].hours += hours
-    } else {
-      const newAssignment: Assignment = {
-        id: Math.random().toString(36),
-        project_id: projectId,
-        person_id: personId,
-        date,
-        hours
-      }
-      updatedAssignments = [...assignments, newAssignment]
-    }
-
-    setAssignments(updatedAssignments)
-    saveAssignments(updatedAssignments)
-  }
-
-  const allocateWeekForPerson = async (
-    personId: string,
-    { hours = 8, weekdaysOnly = true }: { hours?: number; weekdaysOnly?: boolean } = {}
-  ) => {
-    if (!draggingProject) {
-      alert('Arraste um projeto primeiro, depois use o menu com botão direito.')
-      return
-    }
-
-    const newAssignments = [...assignments]
-
-    currentWeek.forEach((d) => {
-      const dow = d.getDay()
-      if (!weekdaysOnly || (dow >= 1 && dow <= 5)) {
-        const ds = d.toISOString().split('T')[0]
-        const idx = newAssignments.findIndex(
-          a => a.person_id === personId && a.project_id === draggingProject && a.date === ds
-        )
-        if (idx >= 0) {
-          newAssignments[idx].hours = hours
-        } else {
-          newAssignments.push({
-            id: Math.random().toString(36),
-            person_id: personId,
-            project_id: draggingProject,
-            date: ds,
-            hours,
-          })
-        }
-      }
-    })
-
-    await saveAssignments(newAssignments)
-    closeCtxMenu()
-  }
-
-  const clearWeekForPersonProject = async (personId: string) => {
-    if (!draggingProject) {
-      alert('Arraste um projeto primeiro para limpar somente esse projeto.')
-      return
-    }
-    const weekISO = currentWeek.map(d => d.toISOString().split('T')[0])
-    const updated = assignments.filter(
-      a => !(a.person_id === personId && a.project_id === draggingProject && weekISO.includes(a.date))
-    )
-    await saveAssignments(updated)
-    closeCtxMenu()
-  }
-
-  const clearWeekForPersonAll = async (personId: string) => {
-    const weekISO = currentWeek.map(d => d.toISOString().split('T')[0])
-    const updated = assignments.filter(
-      a => !(a.person_id === personId && weekISO.includes(a.date))
-    )
-    await saveAssignments(updated)
-    closeCtxMenu()
-  }
-
-  const removeAssignment = async (assignmentId: string) => {
-    const updatedAssignments = assignments.filter(a => a.id !== assignmentId)
-    setAssignments(updatedAssignments)
-    await saveAssignments(updatedAssignments)
+  const getTotalHoursPerDay = (personId: string, dateString: string) => {
+    return assignments
+      .filter(a => a.person_id === personId && a.date === dateString)
+      .reduce((sum, a) => sum + a.hours, 0)
   }
 
   const handleDragStart = (projectId: string) => {
     setDraggingProject(projectId)
   }
 
-  const handleDrop = (personId: string, date: string) => {
-    if (draggingProject) {
-      handleAssignment(draggingProject, personId, date)
-      setDraggingProject(null)
-    }
-  }
+  const handleDrop = (personId: string, dateString: string) => {
+    if (!draggingProject) return
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newWeek = currentWeek.map(day => {
-      const newDate = new Date(day)
-      newDate.setDate(day.getDate() + (direction === 'next' ? 7 : -7))
-      return newDate
-    })
-    setCurrentWeek(newWeek)
-  }
-
-  const updateAssignmentHours = async (assignmentId: string, hours: number) => {
-    if (hours <= 0) {
-      await removeAssignment(assignmentId)
-      return
+    const newAssignment: Assignment = {
+      id: `${personId}-${draggingProject}-${dateString}`,
+      person_id: personId,
+      project_id: draggingProject,
+      date: dateString,
+      hours: 8
     }
 
-    const updatedAssignments = assignments.map(a => 
+    const updated = [...assignments, newAssignment]
+    saveAssignments(updated)
+    setDraggingProject(null)
+  }
+
+  const updateAssignmentHours = (assignmentId: string, hours: number) => {
+    const updated = assignments.map((a) =>
       a.id === assignmentId ? { ...a, hours } : a
     )
-    
-    setAssignments(updatedAssignments)
-    await saveAssignments(updatedAssignments)
+    saveAssignments(updated)
+  }
+
+  const removeAssignment = (assignmentId: string) => {
+    const updated = assignments.filter((a) => a.id !== assignmentId)
+    saveAssignments(updated)
+  }
+
+  const allocateWeekForPerson = (personId: string, opts: { hours: number; weekdaysOnly: boolean }) => {
+    if (!draggingProject) return
+
+    const newAssignments: Assignment[] = currentWeek
+      .filter(date => {
+        if (opts.weekdaysOnly) {
+          const dow = date.getDay()
+          return dow >= 1 && dow <= 5
+        }
+        return true
+      })
+      .map(date => {
+        const dateString = date.toISOString().split('T')[0]
+        return {
+          id: `${personId}-${draggingProject}-${dateString}`,
+          person_id: personId,
+          project_id: draggingProject!,
+          date: dateString,
+          hours: opts.hours
+        }
+      })
+
+    const updated = [...assignments, ...newAssignments]
+    saveAssignments(updated)
+    closeCtxMenu()
+  }
+
+  const clearWeekForPersonProject = (personId: string) => {
+    if (!draggingProject) return
+    const weekDates = currentWeek.map(d => d.toISOString().split('T')[0])
+    const updated = assignments.filter(a => {
+      if (a.person_id === personId && a.project_id === draggingProject) {
+        return !weekDates.includes(a.date)
+      }
+      return true
+    })
+    saveAssignments(updated)
+    closeCtxMenu()
+  }
+
+  const clearWeekForPersonAll = (personId: string) => {
+    const weekDates = currentWeek.map(d => d.toISOString().split('T')[0])
+    const updated = assignments.filter(a => {
+      if (a.person_id === personId) {
+        return !weekDates.includes(a.date)
+      }
+      return true
+    })
+    saveAssignments(updated)
+    closeCtxMenu()
+  }
+
+  const formatDate = (date: Date) => {
+    const daysOfWeek = ['dom.', 'seg.', 'ter.', 'qua.', 'qui.', 'sex.', 'sáb.']
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const dayName = daysOfWeek[date.getDay()]
+    return `${dayName}, ${day}/${month}`
   }
 
   const getProjectDisplayName = (project: Project | undefined) => {
-    if (!project) return "Projeto Não Encontrado"
-    
-    const maxLength = 30
-    let projectName = project.name
-    
-    if (projectName.length > maxLength) {
-      projectName = projectName.substring(0, maxLength) + "..."
-    }
-    
-    return `${project.code}: ${projectName}`
+    if (!project) return '???'
+    const maxLength = 20
+    const displayName = `${project.code}: ${project.name}`
+    return displayName.length > maxLength 
+      ? displayName.substring(0, maxLength) + '...' 
+      : displayName
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-semibold text-gray-800">Timeline de Alocações</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigateWeek('prev')}
-            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+    <div className="space-y-4 p-4 max-w-[100rem] mx-auto">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Timeline de Alocações</h1>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => generateWeek(-1)}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-medium"
           >
             ← Semana Anterior
           </button>
-          <button
-            onClick={() => navigateWeek('next')}
-            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
+          <button 
+            onClick={() => generateWeek(1)}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-medium"
           >
             Próxima Semana →
           </button>
@@ -427,18 +405,18 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* Timeline - Versão Mais Limpa */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-auto">
-        <table className="w-full">
+      {/* Timeline - VERSÃO MINIMALISTA */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto">
+        <table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: '12rem' }} />
+            <col style={{ width: '11rem' }} />
             {currentWeek.map((date, i) => {
               const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
               return (
                 <col
                   key={i}
                   style={{
-                    width: isWeekendDay ? '8rem' : '12rem',
+                    width: isWeekendDay ? '8rem' : '15rem',
                   }}
                 />
               )
@@ -457,10 +435,10 @@ export default function TimelinePage() {
                 return (
                   <th
                     key={index}
-                    className={`px-2 py-2 text-center text-xs font-medium border-b ${
+                    className={`px-3 py-2 text-center text-xs font-medium border-b ${
                       isWeekendDay
                         ? 'bg-gray-50 text-gray-500'
-                        : 'bg-gray-50 text-gray-700'
+                        : 'bg-white text-gray-700'
                     }`}
                   >
                     {formatDate(date)}
@@ -470,25 +448,25 @@ export default function TimelinePage() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-100">
-            {people.map((person) => (
-              <tr key={person.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2">
+          <tbody>
+            {people.map((person, personIndex) => (
+              <tr key={person.id} className={personIndex > 0 ? 'border-t border-gray-100' : ''}>
+                <td className="px-3 py-2.5">
                   <div className="text-sm font-medium text-gray-900">
                     {person.full_name}
                   </div>
-                  <div className="text-xs text-gray-500">{person.role}</div>
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
                   const dateString = date.toISOString().split('T')[0]
                   const totalHours = getTotalHoursPerDay(person.id, dateString)
                   const warning = mustWarn(date, totalHours)
+                  const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
                   
                   return (
                     <td 
                       key={dayIndex}
-                      className={`px-1.5 py-1 border-l border-gray-100 ${isWeekend(date) ? 'bg-gray-50' : ''}`}
+                      className={`px-2 py-2.5 ${isWeekendDay ? 'bg-gray-50' : ''}`}
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
@@ -497,50 +475,51 @@ export default function TimelinePage() {
                       onContextMenuCapture={(e) => openCtxMenu(e, person.id, dateString)}
                       onContextMenu={(e) => openCtxMenu(e, person.id, dateString)}
                     >
-                      <div className={`min-h-8 transition-colors rounded ${
-                        warning ? 'bg-red-50 border border-red-200' : ''
+                      <div className={`min-h-[60px] rounded transition-colors ${
+                        warning ? 'bg-red-50/50' : ''
                       }`}>
-                        {assignments
-                          .filter(a => a.person_id === person.id && a.date === dateString)
-                          .map((assignment) => {
-                            const project = projects.find(p => p.id === assignment.project_id)
-                            return (
-                              <div
-                                key={assignment.id}
-                                className={`rounded px-2 py-1 mb-0.5 text-xs ${getProjectTypeStyles(project?.project_type)}`}
-                              >
-                                <div className="flex items-center justify-between gap-1 min-w-0">
-                                  <span className="text-[11px] font-medium truncate flex-1"
-                                    title={project?.name || ''}>
-                                    {project?.code}
+                        <div className="space-y-1">
+                          {assignments
+                            .filter(a => a.person_id === person.id && a.date === dateString)
+                            .map((assignment) => {
+                              const project = projects.find(p => p.id === assignment.project_id)
+                              return (
+                                <div
+                                  key={assignment.id}
+                                  className="flex items-center justify-between gap-1.5 py-0.5"
+                                >
+                                  <span 
+                                    className={`text-[11px] font-semibold truncate ${getProjectBadgeStyles(project?.project_type)}`}
+                                    title={project?.name || ''}
+                                  >
+                                    {project?.code || '???'}
                                   </span>
+                                  
                                   <div className="flex items-center gap-1 flex-shrink-0">
                                     <input
                                       type="number"
                                       min={0}
                                       max={19}
-                                      step={0.5}
+                                      step={1}
                                       value={assignment.hours}
                                       onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
-                                      inputMode="decimal"
-                                      className="w-8 text-xs text-right border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      className="w-7 text-[11px] text-center border border-gray-300 rounded px-0.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                       aria-label="Horas"
-                                      title="Horas"
                                     />
 
                                     <button
                                       onClick={() => removeAssignment(assignment.id)}
-                                      className="text-red-500 hover:text-red-700 text-xs font-bold ml-0.5"
-                                      aria-label="Remover alocação"
+                                      className="text-gray-400 hover:text-red-600 text-xs w-4 h-4 flex items-center justify-center"
+                                      aria-label="Remover"
                                     >
                                       ×
                                     </button>
                                   </div>
                                 </div>
-                              </div>
-                            )
-                          })
-                        }
+                              )
+                            })
+                          }
+                        </div>
                       </div>
                     </td>
                   )
