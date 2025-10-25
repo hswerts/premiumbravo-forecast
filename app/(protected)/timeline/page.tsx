@@ -31,7 +31,7 @@ interface Assignment {
   created_at?: string
 }
 
-/* ===== Helpers de data/visual ===== */
+/* ===== Helpers ===== */
 const isWeekend = (d: Date) => {
   const dow = d.getDay()
   return dow === 0 || dow === 6
@@ -41,23 +41,22 @@ const mustWarn = (d: Date, totalHoursForCell: number) => {
   return isWeekend(d) ? totalHoursForCell > 0 : totalHoursForCell > 8
 }
 
-// Função para obter estilos baseados no tipo de projeto
 const getProjectTypeStyles = (projectType: string | null | undefined) => {
-  if (!projectType) return 'bg-gray-100 border-gray-300 text-gray-700'
+  if (!projectType) return 'bg-gray-100 text-gray-700 border-l-4 border-l-gray-400'
   
   switch (projectType) {
     case 'Auditoria Interna':
-      return 'bg-blue-100 border-blue-300 text-blue-700'
+      return 'bg-blue-50 text-blue-800 border-l-4 border-l-blue-500'
     case 'Inventários':
-      return 'bg-red-100 border-red-300 text-red-700'
+      return 'bg-red-50 text-red-800 border-l-4 border-l-red-500'
     case 'CVM 88':
-      return 'bg-orange-100 border-orange-300 text-orange-700'
+      return 'bg-orange-50 text-orange-800 border-l-4 border-l-orange-500'
     case 'Projetos Especiais':
-      return 'bg-yellow-100 border-yellow-300 text-yellow-700'
+      return 'bg-yellow-50 text-yellow-800 border-l-4 border-l-yellow-500'
     case 'Outros':
-      return 'bg-green-100 border-green-300 text-green-700'
+      return 'bg-green-50 text-green-800 border-l-4 border-l-green-500'
     default:
-      return 'bg-gray-100 border-gray-300 text-gray-700'
+      return 'bg-gray-100 text-gray-700 border-l-4 border-l-gray-400'
   }
 }
 
@@ -69,7 +68,7 @@ export default function TimelinePage() {
   const [draggingProject, setDraggingProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // === Menu contextual ===
+  // Menu contextual
   type CtxMenu = {
     show: boolean
     x: number
@@ -381,7 +380,7 @@ export default function TimelinePage() {
   const getProjectDisplayName = (project: Project | undefined) => {
     if (!project) return "Projeto Não Encontrado"
     
-    const maxLength = 35 // aumentado para aproveitar melhor o espaço
+    const maxLength = 30
     let projectName = project.name
     
     if (projectName.length > maxLength) {
@@ -428,19 +427,18 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto">
-        <table className="w-full table-fixed">
+      {/* Timeline - Versão Mais Limpa */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-auto">
+        <table className="w-full">
           <colgroup>
-            <col style={{ width: '11rem' }} />
+            <col style={{ width: '12rem' }} />
             {currentWeek.map((date, i) => {
               const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
               return (
                 <col
                   key={i}
                   style={{
-                    width: isWeekendDay ? '8rem' : '15rem',
-                    backgroundColor: isWeekendDay ? '#f5f5f5' : undefined,
+                    width: isWeekendDay ? '8rem' : '12rem',
                   }}
                 />
               )
@@ -459,9 +457,9 @@ export default function TimelinePage() {
                 return (
                   <th
                     key={index}
-                    className={`px-3 py-2 text-center text-xs font-medium border-b ${
+                    className={`px-2 py-2 text-center text-xs font-medium border-b ${
                       isWeekendDay
-                        ? 'bg-gray-100 text-gray-500'
+                        ? 'bg-gray-50 text-gray-500'
                         : 'bg-gray-50 text-gray-700'
                     }`}
                   >
@@ -472,13 +470,14 @@ export default function TimelinePage() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-100">
             {people.map((person) => (
-              <tr key={person.id}>
+              <tr key={person.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2">
                   <div className="text-sm font-medium text-gray-900">
                     {person.full_name}
                   </div>
+                  <div className="text-xs text-gray-500">{person.role}</div>
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
@@ -489,7 +488,7 @@ export default function TimelinePage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className="px-1.5 py-2 border-l border-gray-200 overflow-hidden"
+                      className={`px-1.5 py-1 border-l border-gray-100 ${isWeekend(date) ? 'bg-gray-50' : ''}`}
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
@@ -498,8 +497,8 @@ export default function TimelinePage() {
                       onContextMenuCapture={(e) => openCtxMenu(e, person.id, dateString)}
                       onContextMenu={(e) => openCtxMenu(e, person.id, dateString)}
                     >
-                      <div className={`p-2 rounded border border-dashed min-h-10 transition-colors ${
-                        warning ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-300'
+                      <div className={`min-h-8 transition-colors rounded ${
+                        warning ? 'bg-red-50 border border-red-200' : ''
                       }`}>
                         {assignments
                           .filter(a => a.person_id === person.id && a.date === dateString)
@@ -508,30 +507,30 @@ export default function TimelinePage() {
                             return (
                               <div
                                 key={assignment.id}
-                                className={`border rounded px-2 py-1 mb-1 text-xs ${getProjectTypeStyles(project?.project_type)}`}
+                                className={`rounded px-2 py-1 mb-0.5 text-xs ${getProjectTypeStyles(project?.project_type)}`}
                               >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-[11px] font-medium truncate min-w-0 flex-1"
+                                <div className="flex items-center justify-between gap-1 min-w-0">
+                                  <span className="text-[11px] font-medium truncate flex-1"
                                     title={project?.name || ''}>
-                                    {getProjectDisplayName(project)}
+                                    {project?.code}
                                   </span>
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1 flex-shrink-0">
                                     <input
                                       type="number"
                                       min={0}
                                       max={19}
-                                      step={1}
+                                      step={0.5}
                                       value={assignment.hours}
                                       onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
                                       inputMode="decimal"
-                                      className="w-8 text-xs text-right border rounded px-0.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      className="w-8 text-xs text-right border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                       aria-label="Horas"
                                       title="Horas"
                                     />
 
                                     <button
                                       onClick={() => removeAssignment(assignment.id)}
-                                      className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                      className="text-red-500 hover:text-red-700 text-xs font-bold ml-0.5"
                                       aria-label="Remover alocação"
                                     >
                                       ×
