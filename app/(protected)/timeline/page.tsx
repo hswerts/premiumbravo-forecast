@@ -160,15 +160,23 @@ export default function TimelinePage() {
     
     try {
       for (const assignment of updatedAssignments) {
-        const { data: existingAssignment } = await supabase
+        // Usa maybeSingle() para não dar erro quando não encontra nada
+        const { data: existingAssignment, error: fetchError } = await supabase
           .from('assignments')
           .select('id')
           .eq('person_id', assignment.person_id)
           .eq('project_id', assignment.project_id)
           .eq('date', assignment.date)
-          .single()
+          .maybeSingle()
+
+        // Se houve erro real na busca, loga mas continua
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Erro ao buscar assignment:', fetchError)
+          continue
+        }
 
         if (existingAssignment) {
+          // Atualiza assignment existente
           const { error } = await supabase
             .from('assignments')
             .update({ hours: assignment.hours })
@@ -176,6 +184,7 @@ export default function TimelinePage() {
 
           if (error) throw error
         } else {
+          // Cria novo assignment
           const { error } = await supabase
             .from('assignments')
             .insert([{
@@ -189,6 +198,7 @@ export default function TimelinePage() {
         }
       }
 
+      // Remove assignments que não existem mais localmente
       const { data: allAssignments } = await supabase
         .from('assignments')
         .select('id, person_id, project_id, date')
@@ -599,4 +609,40 @@ export default function TimelinePage() {
             className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 border-b border-gray-100 ${
               draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
             }`}
-           
+            onClick={() =>
+              draggingProject &&
+              ctxMenu.personId &&
+              allocateWeekForPerson(ctxMenu.personId, { hours: 8, weekdaysOnly: false })
+            }
+          >
+            Alocar <b>8h (dom–sáb)</b> para o projeto arrastado
+          </button>
+
+          <div className="my-1 border-t border-gray-200" />
+
+          <button
+            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 border-b border-gray-100 ${
+              draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={() =>
+              draggingProject &&
+              ctxMenu.personId &&
+              clearWeekForPersonProject(ctxMenu.personId)
+            }
+          >
+            Limpar semana (apenas este projeto arrastado)
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 text-red-700 font-medium"
+            onClick={() =>
+              ctxMenu.personId && clearWeekForPersonAll(ctxMenu.personId)
+            }
+          >
+            Limpar semana (todas as alocações da pessoa)
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
