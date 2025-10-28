@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import link from 'next/link'
 
 // Componente da Navbar separado para usar hooks
 function Navbar() {
@@ -19,13 +20,13 @@ function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo da Premium Bravo */}
           <div className="flex items-center space-x-3">
-            <a href="/" className="flex items-center">
+            <link href="/" className="flex items-center">
               <img
                 src="/logo.png"
                 alt="Premium Bravo"
                 className="h-8 w-auto"
               />
-            </a>
+            </link>
           </div>
 
           {/* Menu de Navegação */}
