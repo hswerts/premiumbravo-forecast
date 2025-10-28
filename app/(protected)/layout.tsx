@@ -17,12 +17,15 @@ function Navbar() {
     <nav className="bg-premiumbravo text-white shadow-lg">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo e Título */}
+          {/* Logo da Premium Bravo */}
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white bg-opacity-20 rounded flex items-center justify-center">
-              <span className="font-bold text-sm">PB</span>
-            </div>
-            <span className="font-bold text-lg">Forecast</span>
+            <a href="/" className="flex items-center">
+              <img
+                src="/logo.png"
+                alt="Premium Bravo"
+                className="h-8 w-auto"
+              />
+            </a>
           </div>
 
           {/* Menu de Navegação */}
