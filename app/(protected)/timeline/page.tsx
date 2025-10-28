@@ -1,4 +1,4 @@
-// app/(protected)/timeline/page.tsx
+// app/timeline/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -60,6 +60,37 @@ const getProjectTypeStyles = (projectType: string | null | undefined) => {
   }
 }
 
+// 🎨 Função para estilizar os totalizadores
+const getTotalStyles = (date: Date, totalHours: number) => {
+  const isWeekendDay = isWeekend(date)
+  
+  // Fim de semana
+  if (isWeekendDay) {
+    if (totalHours === 0) {
+      // 🎨 COR DO TOTALIZADOR: Fim de semana sem horas
+      return 'bg-gray-500 text-white'
+    } else {
+      // 🎨 COR DO TOTALIZADOR: Fim de semana COM horas (alerta)
+      return 'bg-gray-500 text-white'
+    }
+  }
+  
+  // Dia útil
+  if (totalHours === 0) {
+    // 🎨 COR DO TOTALIZADOR: Dia útil sem horas
+    return 'bg-gray-500 text-white'
+  } else if (totalHours === 8) {
+    // 🎨 COR DO TOTALIZADOR: Dia útil com exatas 8h (ideal)
+    return 'bg-gray-500 text-white'
+  } else if (totalHours < 8) {
+    // 🎨 COR DO TOTALIZADOR: Dia útil com menos de 8h
+    return 'bg-gray-500 text-white'
+  } else {
+    // 🎨 COR DO TOTALIZADOR: Dia útil com mais de 8h (alerta)
+    return 'bg-gray-500 text-white'
+  }
+}
+
 export default function TimelinePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -93,8 +124,16 @@ export default function TimelinePage() {
   }
 
   useEffect(() => {
-    const onClick = () => closeCtxMenu()
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeCtxMenu() }
+    const onClick = () => {
+      closeCtxMenu()
+      setDraggingProject(null)
+    }
+    const onEsc = (e: KeyboardEvent) => { 
+      if (e.key === 'Escape') {
+        closeCtxMenu()
+        setDraggingProject(null)
+      }
+    }
     window.addEventListener('click', onClick)
     window.addEventListener('keydown', onEsc)
     return () => {
@@ -159,70 +198,45 @@ export default function TimelinePage() {
     setAssignments(updatedAssignments)
     
     try {
-      for (const assignment of updatedAssignments) {
-        // Usa maybeSingle() para não dar erro quando não encontra nada
-        const { data: existingAssignment, error: fetchError } = await supabase
-          .from('assignments')
-          .select('id')
-          .eq('person_id', assignment.person_id)
-          .eq('project_id', assignment.project_id)
-          .eq('date', assignment.date)
-          .maybeSingle()
+      const rows = updatedAssignments.map(a => ({
+        person_id: a.person_id,
+        project_id: a.project_id,
+        date: a.date,
+        hours: a.hours,
+      }))
 
-        // Se houve erro real na busca, loga mas continua
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('Erro ao buscar assignment:', fetchError)
-          continue
-        }
+      const { error: upsertErr } = await supabase
+        .from('assignments')
+        .upsert(rows, { onConflict: 'person_id,project_id,date' })
 
-        if (existingAssignment) {
-          // Atualiza assignment existente
-          const { error } = await supabase
-            .from('assignments')
-            .update({ hours: assignment.hours })
-            .eq('id', existingAssignment.id)
+      if (upsertErr) throw upsertErr
 
-          if (error) throw error
-        } else {
-          // Cria novo assignment
-          const { error } = await supabase
-            .from('assignments')
-            .insert([{
-              person_id: assignment.person_id,
-              project_id: assignment.project_id,
-              date: assignment.date,
-              hours: assignment.hours
-            }])
+      const key = (r: { person_id: string; project_id: string; date: string }) =>
+        `${r.person_id}|${r.project_id}|${r.date}`
 
-          if (error) throw error
-        }
-      }
+      const currentKeys = new Set(rows.map(key))
 
-      // Remove assignments que não existem mais localmente
-      const { data: allAssignments } = await supabase
+      const { data: dbList, error: selErr } = await supabase
         .from('assignments')
         .select('id, person_id, project_id, date')
 
-      if (allAssignments) {
-        for (const dbAssignment of allAssignments) {
-          const existsInLocal = updatedAssignments.some(a => 
-            a.person_id === dbAssignment.person_id &&
-            a.project_id === dbAssignment.project_id && 
-            a.date === dbAssignment.date
-          )
+      if (selErr) throw selErr
 
-          if (!existsInLocal) {
-            const { error } = await supabase
-              .from('assignments')
-              .delete()
-              .eq('id', dbAssignment.id)
+      const toDeleteIds =
+        (dbList ?? [])
+          .filter(r => !currentKeys.has(key(r)))
+          .map(r => r.id)
 
-            if (error) console.error('Erro ao remover assignment:', error)
-          }
-        }
+      if (toDeleteIds.length) {
+        const { error: delErr } = await supabase
+          .from('assignments')
+          .delete()
+          .in('id', toDeleteIds)
+
+        if (delErr) throw delErr
       }
 
-      console.log('✅ Assignments sincronizados com o Supabase')
+      console.log('✅ Assignments sincronizados com o Supabase (upsert + limpeza)')
     } catch (error) {
       console.error('Erro ao salvar assignments:', error)
       alert('Erro ao salvar alocações. Tente novamente.')
@@ -234,7 +248,6 @@ export default function TimelinePage() {
     base.setHours(0, 0, 0, 0)
     base.setDate(base.getDate() + offset * 7)
 
-    // Sempre começar no domingo
     const sunday = new Date(base)
     const dow = sunday.getDay()
     sunday.setDate(sunday.getDate() - dow)
@@ -246,6 +259,10 @@ export default function TimelinePage() {
     })
 
     setCurrentWeek(week)
+  }
+
+  const goToToday = () => {
+    generateWeek(0)
   }
 
   const formatDate = (date: Date) => {
@@ -261,6 +278,34 @@ export default function TimelinePage() {
       a.person_id === personId && a.date === date
     )
     return dayAssignments.reduce((total, assignment) => total + assignment.hours, 0)
+  }
+
+  // 🆕 Calcular total de horas por dia (todas as pessoas)
+  const getTotalHoursForDate = (date: string) => {
+    const dayAssignments = assignments.filter(a => a.date === date)
+    return dayAssignments.reduce((total, assignment) => total + assignment.hours, 0)
+  }
+
+  // 🆕 Calcular total de horas da semana exibida
+  const getWeekTotal = () => {
+    const weekDates = currentWeek.map(d => d.toISOString().split('T')[0])
+    return weekDates.reduce((total, date) => total + getTotalHoursForDate(date), 0)
+  }
+
+  // 🆕 Calcular total de horas do mês atual
+  const getMonthTotal = () => {
+    if (currentWeek.length === 0) return 0
+    
+    const currentMonth = currentWeek[3].getMonth() // Usa quarta-feira como referência
+    const currentYear = currentWeek[3].getFullYear()
+    
+    return assignments
+      .filter(a => {
+        const assignmentDate = new Date(a.date + 'T00:00:00')
+        return assignmentDate.getMonth() === currentMonth && 
+               assignmentDate.getFullYear() === currentYear
+      })
+      .reduce((total, assignment) => total + assignment.hours, 0)
   }
 
   const handleAssignment = async (projectId: string, personId: string, date: string, hours: number = 8) => {
@@ -361,12 +406,16 @@ export default function TimelinePage() {
   const handleDrop = (personId: string, date: string) => {
     if (draggingProject) {
       handleAssignment(draggingProject, personId, date)
-      setDraggingProject(null)
     }
   }
 
   const navigateWeek = (direction: 'prev' | 'next') => {
-    generateWeek(direction === 'next' ? 1 : -1)
+    const newWeek = currentWeek.map(day => {
+      const newDate = new Date(day)
+      newDate.setDate(day.getDate() + (direction === 'next' ? 7 : -7))
+      return newDate
+    })
+    setCurrentWeek(newWeek)
   }
 
   const updateAssignmentHours = async (assignmentId: string, hours: number) => {
@@ -386,71 +435,112 @@ export default function TimelinePage() {
   const getProjectDisplayName = (project: Project | undefined) => {
     if (!project) return "Projeto Não Encontrado"
     
-    const maxNameLength = 12
+    const maxLength = 30
     let projectName = project.name
     
-    if (projectName.length > maxNameLength) {
-      projectName = projectName.substring(0, maxNameLength) + "..."
+    if (projectName.length > maxLength) {
+      projectName = projectName.substring(0, maxLength) + "..."
     }
     
     return `${project.code}: ${projectName}`
   }
 
-  const getProjectFullName = (project: Project | undefined) => {
-    if (!project) return "Projeto Não Encontrado"
-    return `${project.code}: ${project.name}`
+  // 🆕 Formatar nome do mês
+  const getMonthName = () => {
+    if (currentWeek.length === 0) return ''
+    const date = currentWeek[3] // Usa quarta-feira como referência
+    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   }
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-        <h1 className="text-2xl font-bold text-gray-900">Timeline de Alocações</h1>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-800">Timeline de Alocações</h1>
+          {/* 🆕 Totalizador Mensal */}
+          <div className="mt-1 text-sm">
+            <span className="text-gray-600">Mês: </span>
+            <span className="font-medium text-gray-800 capitalize">{getMonthName()}</span>
+            <span className="mx-2 text-gray-400">•</span>
+            <span className="text-gray-600">Total alocado: </span>
+            {/* 🎨 COR DO TOTALIZADOR MENSAL */}
+            {/* Troque as cores abaixo conforme necessário */}
+            <span className="font-bold text-teal-800 text-base">
+              {getMonthTotal()}h
+            </span>
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => navigateWeek('prev')}
-            className="bg-gray-600 text-white px-4 py-2 text-sm rounded-md hover:bg-gray-700 transition-colors font-medium"
+            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
           >
-            ← Semana Anterior
+            ← Anterior
+          </button>
+          <button
+            onClick={goToToday}
+            className="bg-teal-600 text-white px-4 py-1.5 text-sm rounded-md hover:bg-teal-700 transition-colors font-medium"
+          >
+            Hoje
           </button>
           <button
             onClick={() => navigateWeek('next')}
-            className="bg-gray-600 text-white px-4 py-2 text-sm rounded-md hover:bg-gray-700 transition-colors font-medium"
+            className="bg-gray-500 text-white px-4 py-1.5 text-sm rounded-md hover:bg-gray-600 transition-colors"
           >
-            Próxima Semana →
+            Próximo →
           </button>
         </div>
       </div>
 
-      {/* Projetos Disponíveis */}
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-800 mb-3">Projetos Disponíveis (Arraste para alocar):</h3>
-        <div className="flex flex-wrap gap-2">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className={`border rounded-lg px-3 py-2 text-xs cursor-move hover:opacity-80 transition-all hover:shadow-md ${getProjectTypeStyles(project.project_type)}`}
-              draggable
-              onDragStart={() => handleDragStart(project.id)}
-              title={getProjectFullName(project)}
-            >
-              <strong>{project.code}</strong>: {project.name.length > 20 ? project.name.substring(0, 20) + "..." : project.name}
-            </div>
-          ))}
+      {/* Projetos Disponíveis com scroll horizontal */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Projetos Disponíveis (Arraste para alocar):</h3>
+        <div className="overflow-x-auto overflow-y-hidden max-h-24 border border-gray-200 rounded-lg bg-gray-50 p-2">
+          <div className="flex gap-2 min-w-max">
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                className={`border rounded px-3 py-1.5 text-xs cursor-move hover:opacity-80 transition-all flex-shrink-0 ${
+                  draggingProject === project.id ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                } ${getProjectTypeStyles(project.project_type)}`}
+                draggable
+                onDragStart={() => handleDragStart(project.id)}
+                title={`${project.code}: ${project.name}`}
+              >
+                <strong>{project.code}</strong>: {project.name}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Timeline - Versão Corrigida */}
-      <div className="bg-white rounded-lg border border-gray-300 overflow-auto shadow-sm">
+      {/* Indicador de projeto selecionado */}
+      {draggingProject && (
+        <div className="bg-premiumbravo-50 border border-premiumbravo-200 p-2 rounded-lg flex items-center justify-between">
+          <div className="text-sm text-premiumbravo-800">
+            <strong>Projeto selecionado:</strong> {getProjectDisplayName(projects.find(p => p.id === draggingProject))}
+          </div>
+          <button
+            onClick={() => setDraggingProject(null)}
+            className="text-premiumbravo-600 hover:text-premiumbravo-800 text-xs font-medium"
+          >
+            Desmarcar
+          </button>
+        </div>
+      )}
+
+      {/* Timeline - Versão Mais Limpa */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-auto">
         <table className="w-full">
           <colgroup>
-            <col style={{ width: '13rem' }} />
+            <col style={{ width: '12rem' }} />
             {currentWeek.map((date, i) => {
               const isWeekendDay = date.getDay() === 0 || date.getDay() === 6
               return (
                 <col
                   key={i}
                   style={{
-                    width: isWeekendDay ? '9rem' : '13rem',
+                    width: isWeekendDay ? '8rem' : '12rem',
                   }}
                 />
               )
@@ -459,7 +549,9 @@ export default function TimelinePage() {
 
           <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 bg-gray-100 border-b border-gray-300">
+              {/* 🎨 AJUSTE DE COR #1 - CABEÇALHO "Pessoa / Data" */}
+              {/* Opções de cor para testar: text-gray-700, text-gray-800, text-gray-900, text-black */}
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 bg-gray-200 border-b">
                 Pessoa / Data
               </th>
 
@@ -469,10 +561,14 @@ export default function TimelinePage() {
                 return (
                   <th
                     key={index}
-                    className={`px-3 py-3 text-center text-sm font-semibold border-b border-gray-300 ${
+                    className={`px-2 py-2 text-center text-xs font-medium border-b ${
                       isWeekendDay
-                        ? 'bg-gray-100 text-gray-600'
-                        : 'bg-gray-100 text-gray-900'
+                        /* 🎨 AJUSTE DE COR #2 - DATAS FIM DE SEMANA */
+                        /* Opções: text-gray-500, text-gray-600, text-gray-700, text-gray-800 */
+                        ? 'bg-gray-200 text-gray-700'
+                        /* 🎨 AJUSTE DE COR #3 - DATAS DIAS ÚTEIS */
+                        /* Opções: text-gray-700, text-gray-800, text-gray-900, text-black */
+                        : 'bg-gray-200 text-gray-900'
                     }`}
                   >
                     {formatDate(date)}
@@ -482,14 +578,14 @@ export default function TimelinePage() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-300">
             {people.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <div className="text-sm font-semibold text-gray-900">
+                <td className="px-3 py-2">
+                  <div className="text-sm font-medium text-gray-900">
                     {person.full_name}
                   </div>
-                  <div className="text-xs text-gray-600">{person.role}</div>
+                  <div className="text-xs text-gray-500">{person.role}</div>
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
@@ -500,17 +596,18 @@ export default function TimelinePage() {
                   return (
                     <td 
                       key={dayIndex}
-                      className={`px-2 py-2 border-l border-gray-200 ${isWeekend(date) ? 'bg-gray-50' : ''} ${
-                        warning ? 'bg-red-100 border-2 border-red-400' : ''
-                      }`}
+                      className={`px-1.5 py-1 border-l border-gray-100 ${isWeekend(date) ? 'bg-gray-200' : ''}`}
                       onDragOver={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'copy'
                       }}
                       onDrop={() => handleDrop(person.id, dateString)}
+                      onContextMenuCapture={(e) => openCtxMenu(e, person.id, dateString)}
                       onContextMenu={(e) => openCtxMenu(e, person.id, dateString)}
                     >
-                      <div className="min-h-10 transition-colors">
+                      <div className={`min-h-8 transition-colors rounded ${
+                        warning ? 'bg-red-450 border border-red-800' : ''
+                      }`}>
                         {assignments
                           .filter(a => a.person_id === person.id && a.date === dateString)
                           .map((assignment) => {
@@ -518,12 +615,13 @@ export default function TimelinePage() {
                             return (
                               <div
                                 key={assignment.id}
-                                className={`rounded px-2 py-1.5 mb-1 text-xs hover:shadow-sm transition-shadow ${getProjectTypeStyles(project?.project_type)}`}
-                                title={getProjectFullName(project)}
+                                className={`rounded px-2 py-1 mb-0.5 text-xs ${getProjectTypeStyles(project?.project_type)}`}
                               >
                                 <div className="flex items-center justify-between gap-1 min-w-0">
-                                  <span className="text-[11px] font-medium truncate flex-1 text-left">
-                                    {getProjectDisplayName(project)}
+                                  <span className="text-[11px] font-medium truncate flex-1"
+                                    title={project ? `${project.code}: ${project.name}` : ''}>
+                                    {project?.code}: {project?.name.substring(0, 10)}
+                                    {project && project.name.length > 10 && '...'}
                                   </span>
                                   <div className="flex items-center gap-1 flex-shrink-0">
                                     <input
@@ -534,17 +632,14 @@ export default function TimelinePage() {
                                       value={assignment.hours}
                                       onChange={(e) => updateAssignmentHours(assignment.id, parseFloat(e.target.value) || 0)}
                                       inputMode="decimal"
-                                      className="w-10 text-xs text-right border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      className="w-8 text-xs text-right border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                       aria-label="Horas"
                                       title="Horas"
                                     />
 
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        removeAssignment(assignment.id)
-                                      }}
-                                      className="text-red-600 hover:text-red-800 text-xs font-bold ml-0.5 hover:bg-red-100 rounded w-4 h-4 flex items-center justify-center"
+                                      onClick={() => removeAssignment(assignment.id)}
+                                      className="text-red-500 hover:text-red-700 text-xs font-bold ml-0.5"
                                       aria-label="Remover alocação"
                                     >
                                       ×
@@ -561,39 +656,61 @@ export default function TimelinePage() {
                 })}
               </tr>
             ))}
+
+            {/* 🆕 LINHA DE TOTALIZADOR POR DIA */}
+            <tr className="bg-gray-800 text-white font-semibold">
+              <td className="px-3 py-2 text-sm">
+                Total do Dia
+              </td>
+              {currentWeek.map((date, index) => {
+                const dateString = date.toISOString().split('T')[0]
+                const dayTotal = getTotalHoursForDate(dateString)
+                
+                return (
+                  <td 
+                    key={index}
+                    className={`px-2 py-2 text-center text-sm border-l border-gray-700 ${getTotalStyles(date, dayTotal)}`}
+                  >
+                    {dayTotal > 0 ? `${dayTotal}h` : '0h'}
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
 
       {/* Instruções */}
-      <div className="bg-blue-50 border border-blue-300 p-4 rounded-lg">
-        <h3 className="text-sm font-semibold text-blue-900 mb-2">Como usar:</h3>
-        <ul className="text-xs text-blue-800 space-y-1">
+      <div className="bg-teal-50 border border-premiumbravo-200 p-3 rounded-lg">
+        <h3 className="text-sm font-semibold text-premiumbravo-800 mb-1.5">Como usar:</h3>
+        <ul className="text-xs text-premiumbravo-700 space-y-0.5">
           <li>• <strong>Arraste os projetos</strong> para os dias da semana de cada pessoa</li>
           <li>• <strong>Ajuste as horas</strong> diretamente no input de cada alocação</li>
           <li>• <strong>Clique no ×</strong> para remover uma alocação</li>
-          <li>• <strong className="text-red-700">VERMELHO INTENSO</strong> indica: dias úteis &gt; 8h, ou qualquer hora no fim de semana</li>
+          <li>• <strong>Vermelho</strong> indica: dias úteis &gt; 8h, ou qualquer hora no fim de semana</li>
+          <li>• <strong>Botão direito do mouse</strong>: após arrastar um projeto, clique com botão direito em qualquer célula da pessoa para alocar 8h por toda a semana</li>
+          <li>• <strong>Desmarcar projeto</strong>: clique fora da timeline ou pressione ESC para desmarcar o projeto selecionado</li>
+          <li>• <strong>Totalizadores</strong>: a linha inferior mostra o total de horas por dia (verde = 8h ideal, azul = abaixo de 8h, vermelho = acima de 8h)</li>
           <li>• <strong>Dados salvos automaticamente</strong> no banco de dados</li>
           <li>• <strong>Cores dos projetos</strong> indicam o tipo: Azul=Auditoria, Vermelho=Inventários, Laranja=CVM88, Amarelo=Especiais, Verde=Outros</li>
-          <li>• <strong>Passe o mouse</strong> sobre os projetos para ver o nome completo</li>
         </ul>
       </div>
 
       {/* Menu Contextual */}
       {ctxMenu.show && (
         <div
-          className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl w-64"
+          className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg w-64"
           style={{ top: ctxMenu.y + 4, left: ctxMenu.x + 4 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-2 text-xs text-gray-600 border-b border-gray-300 bg-gray-50 rounded-t-lg">
-            Ações para: <span className="font-semibold text-gray-800">
+          <div className="px-3 py-2 text-xs text-gray-500 border-b">
+            Ações para: <span className="font-medium text-gray-700">
               {people.find(p => p.id === ctxMenu.personId)?.full_name}
             </span>
           </div>
 
           <button
-            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 border-b border-gray-100 ${
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
               draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
             }`}
             onClick={() =>
@@ -606,7 +723,7 @@ export default function TimelinePage() {
           </button>
 
           <button
-            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 border-b border-gray-100 ${
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
               draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
             }`}
             onClick={() =>
@@ -618,10 +735,10 @@ export default function TimelinePage() {
             Alocar <b>8h (dom–sáb)</b> para o projeto arrastado
           </button>
 
-          <div className="my-1 border-t border-gray-200" />
+          <div className="my-1 border-t" />
 
           <button
-            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 border-b border-gray-100 ${
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
               draggingProject ? 'text-gray-800' : 'opacity-50 cursor-not-allowed'
             }`}
             onClick={() =>
@@ -634,7 +751,7 @@ export default function TimelinePage() {
           </button>
 
           <button
-            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-100 text-red-700 font-medium"
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 text-red-700"
             onClick={() =>
               ctxMenu.personId && clearWeekForPersonAll(ctxMenu.personId)
             }
