@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Project {
@@ -24,4 +24,16 @@ model Project {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("projects")
+}
+
+model Person {
+  id             String   @id @default(cuid())
+  timesheet_code String   @unique
+  full_name      String
+  pin_hash       String?
+  is_admin       Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("people")
 }
