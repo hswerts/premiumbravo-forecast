@@ -340,7 +340,7 @@ export default function PeoplePage() {
   }
 
   const maskMoney = (value: string) => {
-    let numericValue = value.replace(/\D/g, '')
+    const numericValue = value.replace(/\D/g, '')
     if (!numericValue) return ''
     const number = parseFloat(numericValue) / 100
     return number.toLocaleString('pt-BR', {
