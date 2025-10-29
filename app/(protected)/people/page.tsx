@@ -8,6 +8,7 @@ interface Person {
   id: string
   timesheet_code: string
   full_name: string
+  nome_de_guerra: string
   role: string
   department: string
   hourly_cost: number
@@ -135,6 +136,7 @@ export default function PeoplePage() {
   const [formData, setFormData] = useState({
     timesheetCode: '',
     fullName: '',
+    nomeDeGuerra: '',
     role: '',
     department: '',
     hourlyCost: '',
@@ -254,6 +256,7 @@ export default function PeoplePage() {
     setFormData({
       timesheetCode: person.timesheet_code,
       fullName: person.full_name,
+      nomeDeGuerra: person.nome_de_guerra || '',
       role: person.role,
       department: person.department,
       hourlyCost: person.hourly_cost ? formatMoneyForDisplay(person.hourly_cost) : '',
@@ -474,6 +477,7 @@ export default function PeoplePage() {
       const personData = {
         timesheet_code: formData.timesheetCode,
         full_name: formData.fullName,
+        nome_de_guerra: formData.nomeDeGuerra || null,
         role: formData.role,
         department: formData.department,
         hourly_cost: formData.hourlyCost ? convertMoneyToFloat(formData.hourlyCost) : null,
@@ -547,6 +551,7 @@ export default function PeoplePage() {
       setFormData({
         timesheetCode: '',
         fullName: '',
+        nomeDeGuerra: '',
         role: '',
         department: '',
         hourlyCost: '',
@@ -626,6 +631,7 @@ export default function PeoplePage() {
     setFormData({
       timesheetCode: '',
       fullName: '',
+      nomeDeGuerra: "",
       role: '',
       department: '',
       hourlyCost: '',
@@ -776,6 +782,21 @@ export default function PeoplePage() {
                     type="text"
                     name="fullName"
                     value={formData.fullName}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: João Souza da Silva"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome de Guerra *
+                  </label>
+                  <input
+                    type="text"
+                    name="nomeDeGuerra"
+                    value={formData.nomeDeGuerra}
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1413,7 +1434,9 @@ export default function PeoplePage() {
             {sortedPeople.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
                 <td className="px-4 py-1.5 font-mono text-gray-900">{person.timesheet_code}</td>
-                <td className="px-4 py-1.5 font-medium text-gray-900">{person.full_name}</td>
+                <td className="px-4 py-1.5 font-medium text-gray-900">
+                  {person.nome_de_guerra || person.full_name}
+                </td>
                 <td className="px-4 py-1.5 text-gray-500">{person.role}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.department}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.modalidade_trabalho}</td>
