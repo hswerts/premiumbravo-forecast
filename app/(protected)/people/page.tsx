@@ -738,7 +738,7 @@ export default function PeoplePage() {
             setEditingPerson(null)
             setShowForm(true)
           }}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          className="bg-premiumbravo text-white px-4 py-2 rounded-lg hover:bg-teal-600"
         >
           + Nova Pessoa
         </button>
@@ -1369,57 +1369,57 @@ export default function PeoplePage() {
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-300">
             <tr>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-900">
                 <button className={headerBtn} onClick={() => toggleSort('timesheet_code')} title="Ordenar por código">
                   <span className="uppercase">Código</span>
                   <span>{arrow('timesheet_code')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('full_name')} title="Ordenar por nome">
                   <span className="uppercase">Nome</span>
                   <span>{arrow('full_name')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-700">
                 <button className={headerBtn} onClick={() => toggleSort('role')} title="Ordenar por cargo">
                   <span className="uppercase">Cargo</span>
                   <span>{arrow('role')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('department')} title="Ordenar por departamento">
                   <span className="uppercase">Departamento</span>
                   <span>{arrow('department')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('modalidade_trabalho')} title="Ordenar por modalidade">
                   <span className="uppercase">Modalidade</span>
                   <span>{arrow('modalidade_trabalho')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('cidade')} title="Ordenar por cidade">
                   <span className="uppercase">Cidade</span>
                   <span>{arrow('cidade')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('uf')} title="Ordenar por UF">
                   <span className="uppercase">UF</span>
                   <span>{arrow('uf')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('hourly_cost')} title="Ordenar por custo hora">
                   <span className="uppercase">Custo Hora (R$)</span>
                   <span>{arrow('hourly_cost')}</span>
                 </button>
               </th>
-              <th className="px-4 py-2 text-gray-500">
+              <th className="px-4 py-2 text-gray-800">
                 <button className={headerBtn} onClick={() => toggleSort('active')} title="Ordenar por status">
                   <span className="uppercase">Status</span>
                   <span>{arrow('active')}</span>
@@ -1439,7 +1439,11 @@ export default function PeoplePage() {
                   {person.nome_de_guerra || person.full_name}
                 </td>
                 <td className="px-4 py-1.5 text-gray-500">{person.role}</td>
-                <td className="px-4 py-1.5 text-gray-500">{person.department}</td>
+                <td className="px-4 py-1.5">
+                  <span className={`${person.department === 'Auditoria' ? 'bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-medium' : 'text-gray-500'}`}>
+                    {person.department}
+                  </span>
+                </td>
                 <td className="px-4 py-1.5 text-gray-500">{person.modalidade_trabalho}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.cidade}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.uf}</td>
