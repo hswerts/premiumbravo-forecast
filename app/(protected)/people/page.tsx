@@ -726,8 +726,8 @@ export default function PeoplePage() {
   const arrow = (key: SortKey) =>
     sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
 
-  const departments = ['Auditoria', 'Consultoria', 'Administrativo', 'TI', 'Financeiro']
-  const roles = ['Auditor Júnior', 'Auditor Pleno', 'Auditor Sênior', 'Gerente', 'Coordenador', 'Estagiário', 'Analista']
+  const departments = ['Auditoria', 'Inventários', 'Administrativo']
+  const roles = ['Auxiliar I','Auxiliar II','Auxiliar III','Auditor Júnior', 'Auditor Pleno', 'Auditor Sênior I','Auditor Senior II', 'Auditor Senior III','Coordenador I','Coordenador II','Coordenador III','Coordenador Técnico I','Supervisor','Gerente', 'Estagiário', 'Analista']
 
   return (
     <div className="container mx-auto p-6">
@@ -967,6 +967,7 @@ export default function PeoplePage() {
                     <option value="Intermitente">Intermitente</option>
                     <option value="Freelancer">Freelancer</option>
                     <option value="Parceiro">Parceiro</option>
+                    <option value="Estágio">Estagio</option>
                   </select>
                 </div>
 
