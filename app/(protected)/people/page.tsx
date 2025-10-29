@@ -48,6 +48,9 @@ type SortKey =
   | 'full_name'
   | 'role'
   | 'department'
+  | 'modalidade_trabalho'
+  | 'cidade'
+  | 'uf'
   | 'hourly_cost'
   | 'active'
   | 'created_at'
@@ -193,7 +196,7 @@ export default function PeoplePage() {
       const parsed = JSON.parse(saved) as { key?: string; dir?: SortDirection }
 
       const validKeys: SortKey[] = [
-        'timesheet_code','full_name','role','department','hourly_cost','active','created_at'
+        'timesheet_code','full_name','role','department','modalidade_trabalho','cidade','uf','hourly_cost','active','created_at'
       ]
       if (parsed.key && (validKeys as string[]).includes(parsed.key)) {
         setSortKey(parsed.key as SortKey)
@@ -671,6 +674,12 @@ export default function PeoplePage() {
           return p.role || ''
         case 'department':
           return p.department || ''
+        case 'modalidade_trabalho':
+          return p.modalidade_trabalho || ''
+        case 'cidade':
+          return p.cidade || ''
+        case 'uf':
+          return p.uf || ''
         case 'hourly_cost':
           return typeof p.hourly_cost === 'number' ? p.hourly_cost : -Infinity
         case 'active':
@@ -1365,6 +1374,24 @@ export default function PeoplePage() {
                 </button>
               </th>
               <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('modalidade_trabalho')} title="Ordenar por modalidade">
+                  <span className="uppercase">Modalidade</span>
+                  <span>{arrow('modalidade_trabalho')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('cidade')} title="Ordenar por cidade">
+                  <span className="uppercase">Cidade</span>
+                  <span>{arrow('cidade')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
+                <button className={headerBtn} onClick={() => toggleSort('uf')} title="Ordenar por UF">
+                  <span className="uppercase">UF</span>
+                  <span>{arrow('uf')}</span>
+                </button>
+              </th>
+              <th className="px-4 py-2 text-gray-500">
                 <button className={headerBtn} onClick={() => toggleSort('hourly_cost')} title="Ordenar por custo hora">
                   <span className="uppercase">Custo Hora (R$)</span>
                   <span>{arrow('hourly_cost')}</span>
@@ -1389,6 +1416,9 @@ export default function PeoplePage() {
                 <td className="px-4 py-1.5 font-medium text-gray-900">{person.full_name}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.role}</td>
                 <td className="px-4 py-1.5 text-gray-500">{person.department}</td>
+                <td className="px-4 py-1.5 text-gray-500">{person.modalidade_trabalho}</td>
+                <td className="px-4 py-1.5 text-gray-500">{person.cidade}</td>
+                <td className="px-4 py-1.5 text-gray-500">{person.uf}</td>
                 <td className="px-4 py-1.5 text-gray-500">
                   R$ {typeof person.hourly_cost === 'number'
                       ? person.hourly_cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
