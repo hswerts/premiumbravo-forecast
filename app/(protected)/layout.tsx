@@ -20,12 +20,14 @@ function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo e Título */}
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white bg-opacity-20 rounded flex items-center justify-center">
-              <span className="font-bold text-sm">PB</span>
-            </div>
-            <span className="font-bold text-lg">Forecast</span>
+            <Link href="/">
+              <img 
+                src="/logo.png" // ✅ Caminho do logotipo na pasta public
+                alt="Logo Premium Bravo"
+                className="h-8 w-auto" // ✅ Ajuste a altura conforme necessário
+              />
+            </Link>
           </div>
-
           {/* Menu de Navegação */}
           <div className="flex space-x-6">
             <Link href="/projects" className="hover:text-premiumbravo-light transition-colors font-medium">
