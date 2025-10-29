@@ -730,7 +730,7 @@ export default function PeoplePage() {
   const roles = ['Auxiliar I','Auxiliar II','Auxiliar III','Auditor Júnior', 'Auditor Pleno', 'Auditor Sênior I','Auditor Senior II', 'Auditor Senior III','Coordenador I','Coordenador II','Coordenador III','Coordenador Técnico I','Supervisor','Gerente', 'Estagiário', 'Analista']
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Equipe PremiumBravo</h1>
         <button
