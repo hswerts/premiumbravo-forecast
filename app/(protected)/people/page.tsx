@@ -967,7 +967,7 @@ export default function PeoplePage() {
                     <option value="Intermitente">Intermitente</option>
                     <option value="Freelancer">Freelancer</option>
                     <option value="Parceiro">Parceiro</option>
-                    <option value="Estágio">Estagio</option>
+                    <option value="Estagio">Estagio</option>
                   </select>
                 </div>
 

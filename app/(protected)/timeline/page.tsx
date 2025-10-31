@@ -17,6 +17,7 @@ interface Person {
   id: string
   timesheet_code: string
   full_name: string
+  nome_de_guerra: string
   role: string
   department: string
   hourly_cost: number
@@ -67,26 +68,20 @@ const getTotalStyles = (date: Date, totalHours: number) => {
   // Fim de semana
   if (isWeekendDay) {
     if (totalHours === 0) {
-      // 🎨 COR DO TOTALIZADOR: Fim de semana sem horas
       return 'bg-gray-500 text-white'
     } else {
-      // 🎨 COR DO TOTALIZADOR: Fim de semana COM horas (alerta)
       return 'bg-gray-500 text-white'
     }
   }
   
   // Dia útil
   if (totalHours === 0) {
-    // 🎨 COR DO TOTALIZADOR: Dia útil sem horas
     return 'bg-gray-500 text-white'
   } else if (totalHours === 8) {
-    // 🎨 COR DO TOTALIZADOR: Dia útil com exatas 8h (ideal)
     return 'bg-gray-500 text-white'
   } else if (totalHours < 8) {
-    // 🎨 COR DO TOTALIZADOR: Dia útil com menos de 8h
     return 'bg-gray-500 text-white'
   } else {
-    // 🎨 COR DO TOTALIZADOR: Dia útil com mais de 8h (alerta)
     return 'bg-gray-500 text-white'
   }
 }
@@ -98,6 +93,9 @@ export default function TimelinePage() {
   const [currentWeek, setCurrentWeek] = useState<Date[]>([])
   const [draggingProject, setDraggingProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  
+  // 🆕 Estado para o filtro de departamento
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('Todos')
 
   // Menu contextual
   type CtxMenu = {
@@ -280,23 +278,20 @@ export default function TimelinePage() {
     return dayAssignments.reduce((total, assignment) => total + assignment.hours, 0)
   }
 
-  // 🆕 Calcular total de horas por dia (todas as pessoas)
   const getTotalHoursForDate = (date: string) => {
     const dayAssignments = assignments.filter(a => a.date === date)
     return dayAssignments.reduce((total, assignment) => total + assignment.hours, 0)
   }
 
-  // 🆕 Calcular total de horas da semana exibida
   const getWeekTotal = () => {
     const weekDates = currentWeek.map(d => d.toISOString().split('T')[0])
     return weekDates.reduce((total, date) => total + getTotalHoursForDate(date), 0)
   }
 
-  // 🆕 Calcular total de horas do mês atual
   const getMonthTotal = () => {
     if (currentWeek.length === 0) return 0
     
-    const currentMonth = currentWeek[3].getMonth() // Usa quarta-feira como referência
+    const currentMonth = currentWeek[3].getMonth()
     const currentYear = currentWeek[3].getFullYear()
     
     return assignments
@@ -445,26 +440,33 @@ export default function TimelinePage() {
     return `${project.code}: ${projectName}`
   }
 
-  // 🆕 Formatar nome do mês
   const getMonthName = () => {
     if (currentWeek.length === 0) return ''
-    const date = currentWeek[3] // Usa quarta-feira como referência
+    const date = currentWeek[3]
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   }
+
+  // 🆕 Obter lista de departamentos únicos
+  const getDepartments = () => {
+    const departments = [...new Set(people.map(person => person.department).filter(Boolean))]
+    return ['Todos', ...departments.sort()]
+  }
+
+  // 🆕 Filtrar pessoas por departamento - CORRIGIDO
+  const filteredPeople = selectedDepartment === 'Todos' 
+    ? people 
+    : people.filter(person => person.department === selectedDepartment)
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">Timeline de Alocações</h1>
-          {/* 🆕 Totalizador Mensal */}
           <div className="mt-1 text-sm">
             <span className="text-gray-600">Mês: </span>
             <span className="font-medium text-gray-800 capitalize">{getMonthName()}</span>
             <span className="mx-2 text-gray-400">•</span>
             <span className="text-gray-600">Total alocado: </span>
-            {/* 🎨 COR DO TOTALIZADOR MENSAL */}
-            {/* Troque as cores abaixo conforme necessário */}
             <span className="font-bold text-teal-800 text-base">
               {getMonthTotal()}h
             </span>
@@ -492,10 +494,29 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* Projetos Disponíveis com scroll horizontal */}
-      <div>
+      {/* 🆕 Filtro de Departamento - CORRIGIDO */}
+      <div className="bg-white p-3 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Filtrar por Departamento:</span>
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {getDepartments().map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-500">
+            {filteredPeople.length} {filteredPeople.length === 1 ? 'pessoa' : 'pessoas'} encontradas
+          </span>
+        </div>
+      </div>
+
+      {/* Projetos Disponíveis com scroll horizontal - STICKY */}
+      <div className="sticky top-0 z-40 bg-white pb-4 pt-2 border-b border-gray-200 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Projetos Disponíveis (Arraste para alocar):</h3>
-        <div className="overflow-x-auto overflow-y-hidden max-h-24 border border-gray-200 rounded-lg bg-gray-50 p-2">
+        <div className="overflow-x-auto overflow-y-hidden max-h-24 border border-gray-200 rounded-lg bg-gray-50 p-2 shadow-sm">
           <div className="flex gap-2 min-w-max">
             {projects.map((project) => (
               <div
@@ -529,9 +550,10 @@ export default function TimelinePage() {
         </div>
       )}
 
-      {/* Timeline - Versão Mais Limpa */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-auto">
-        <table className="w-full">
+      {/* Timeline - CORRIGIDA para usar filteredPeople */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
+          <table className="w-full">
           <colgroup>
             <col style={{ width: '12rem' }} />
             {currentWeek.map((date, i) => {
@@ -547,10 +569,8 @@ export default function TimelinePage() {
             })}
           </colgroup>
 
-          <thead>
+          <thead className="sticky top-0 z-20 bg-gray-200 shadow-md">
             <tr>
-              {/* 🎨 AJUSTE DE COR #1 - CABEÇALHO "Pessoa / Data" */}
-              {/* Opções de cor para testar: text-gray-700, text-gray-800, text-gray-900, text-black */}
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 bg-gray-200 border-b">
                 Pessoa / Data
               </th>
@@ -563,11 +583,7 @@ export default function TimelinePage() {
                     key={index}
                     className={`px-2 py-2 text-center text-xs font-medium border-b ${
                       isWeekendDay
-                        /* 🎨 AJUSTE DE COR #2 - DATAS FIM DE SEMANA */
-                        /* Opções: text-gray-500, text-gray-600, text-gray-700, text-gray-800 */
                         ? 'bg-gray-200 text-gray-700'
-                        /* 🎨 AJUSTE DE COR #3 - DATAS DIAS ÚTEIS */
-                        /* Opções: text-gray-700, text-gray-800, text-gray-900, text-black */
                         : 'bg-gray-200 text-gray-900'
                     }`}
                   >
@@ -579,13 +595,22 @@ export default function TimelinePage() {
           </thead>
 
           <tbody className="divide-y divide-gray-300">
-            {people.map((person) => (
+            {/* 🆕 CORREÇÃO: usando filteredPeople em vez de people */}
+            {filteredPeople.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2">
+                  {/* 🆕 CORREÇÃO: usando nome_de_guerra e department em vez de role */}
                   <div className="text-sm font-medium text-gray-900">
-                    {person.full_name}
+                    {person.nome_de_guerra || person.full_name}
                   </div>
-                  <div className="text-xs text-gray-500">{person.role}</div>
+                  {/* 🆕 CORREÇÃO: exibindo department com destaque amarelo para Auditoria */}
+                  <div className={`text-xs ${
+                    person.department === 'Auditoria' 
+                      ? 'bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium inline-block mt-1' 
+                      : 'text-gray-500'
+                  }`}>
+                    {person.department}
+                  </div>
                 </td>
                 
                 {currentWeek.map((date, dayIndex) => {
@@ -657,7 +682,7 @@ export default function TimelinePage() {
               </tr>
             ))}
 
-            {/* 🆕 LINHA DE TOTALIZADOR POR DIA */}
+            {/* LINHA DE TOTALIZADOR POR DIA */}
             <tr className="bg-gray-800 text-white font-semibold">
               <td className="px-3 py-2 text-sm">
                 Total do Dia
@@ -678,6 +703,7 @@ export default function TimelinePage() {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Instruções */}
@@ -690,9 +716,12 @@ export default function TimelinePage() {
           <li>• <strong>Vermelho</strong> indica: dias úteis &gt; 8h, ou qualquer hora no fim de semana</li>
           <li>• <strong>Botão direito do mouse</strong>: após arrastar um projeto, clique com botão direito em qualquer célula da pessoa para alocar 8h por toda a semana</li>
           <li>• <strong>Desmarcar projeto</strong>: clique fora da timeline ou pressione ESC para desmarcar o projeto selecionado</li>
-          <li>• <strong>Totalizadores</strong>: a linha inferior mostra o total de horas por dia (verde = 8h ideal, azul = abaixo de 8h, vermelho = acima de 8h)</li>
+          <li>• <strong>Totalizadores</strong>: a linha inferior mostra o total de horas por dia</li>
           <li>• <strong>Dados salvos automaticamente</strong> no banco de dados</li>
           <li>• <strong>Cores dos projetos</strong> indicam o tipo: Azul=Auditoria, Vermelho=Inventários, Laranja=CVM88, Amarelo=Especiais, Verde=Outros</li>
+          {/* 🆕 Instrução sobre filtro */}
+          <li>• <strong>Filtro de Departamento</strong>: use o seletor acima da timeline para filtrar pessoas por departamento</li>
+          <li>• <strong>Departamentos em amarelo</strong>: pessoas do departamento de Auditoria são destacadas em amarelo</li>
         </ul>
       </div>
 
@@ -705,7 +734,7 @@ export default function TimelinePage() {
         >
           <div className="px-3 py-2 text-xs text-gray-500 border-b">
             Ações para: <span className="font-medium text-gray-700">
-              {people.find(p => p.id === ctxMenu.personId)?.full_name}
+              {people.find(p => p.id === ctxMenu.personId)?.nome_de_guerra || people.find(p => p.id === ctxMenu.personId)?.full_name}
             </span>
           </div>
 
