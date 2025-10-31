@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link' // ✅ ADICIONADO: Import do Link
+import Link from 'next/link'
 
 // Componente da Navbar separado para usar hooks
 function Navbar() {
@@ -11,7 +11,7 @@ function Navbar() {
 
   const handleLogout = async () => {
     await signOut({ redirect: false })
-    router.push('/login') // Redireciona para a tela de login
+    router.push('/login')
   }
 
   return (
@@ -22,14 +22,17 @@ function Navbar() {
           <div className="flex items-center space-x-3">
             <Link href="/">
               <img 
-                src="/logo.png" // ✅ Caminho do logotipo na pasta public
+                src="/logo.png"
                 alt="Logo Premium Bravo"
-                className="h-8 w-auto" // ✅ Ajuste a altura conforme necessário
+                className="h-8 w-auto"
               />
             </Link>
           </div>
           {/* Menu de Navegação */}
           <div className="flex space-x-6">
+            <Link href="/clients" className="hover:text-premiumbravo-light transition-colors font-medium">
+              Clientes
+            </Link>
             <Link href="/projects" className="hover:text-premiumbravo-light transition-colors font-medium">
               Projects
             </Link>
