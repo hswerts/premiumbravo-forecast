@@ -513,10 +513,10 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* Projetos Disponíveis com scroll horizontal */}
-      <div>
+      {/* Projetos Disponíveis com scroll horizontal - STICKY */}
+      <div className="sticky top-0 z-40 bg-white pb-4 pt-2 border-b border-gray-200 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Projetos Disponíveis (Arraste para alocar):</h3>
-        <div className="overflow-x-auto overflow-y-hidden max-h-24 border border-gray-200 rounded-lg bg-gray-50 p-2">
+        <div className="overflow-x-auto overflow-y-hidden max-h-24 border border-gray-200 rounded-lg bg-gray-50 p-2 shadow-sm">
           <div className="flex gap-2 min-w-max">
             {projects.map((project) => (
               <div
@@ -551,8 +551,9 @@ export default function TimelinePage() {
       )}
 
       {/* Timeline - CORRIGIDA para usar filteredPeople */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-auto">
-        <table className="w-full">
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
+          <table className="w-full">
           <colgroup>
             <col style={{ width: '12rem' }} />
             {currentWeek.map((date, i) => {
@@ -568,7 +569,7 @@ export default function TimelinePage() {
             })}
           </colgroup>
 
-          <thead>
+          <thead className="sticky top-0 z-20 bg-gray-200 shadow-md">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 bg-gray-200 border-b">
                 Pessoa / Data
@@ -702,6 +703,7 @@ export default function TimelinePage() {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Instruções */}
